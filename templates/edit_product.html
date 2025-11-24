@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar producto {{ producto.rowid }}</title>
+</head>
+<body>
+    <h1>Editar producto {{ producto.rowid }}</h1>
+
+    <form method="post">
+        <label>SKU:<br><input name="sku" value="{{ producto.sku }}"></label><br>
+        <label>ID Original:<br><input name="id_original" value="{{ producto.id_original }}"></label><br>
+        <label>Tipo:<br><input name="tipo" value="{{ producto.tipo }}"></label><br>
+        <label>Marca:<br><input name="marca" value="{{ producto.marca }}"></label><br>
+        <label>Modelo:<br><input name="modelo" value="{{ producto.modelo }}"></label><br>
+        <label>No. Serie:<br><input name="no_serie" value="{{ producto.no_serie }}"></label><br>
+        <label>Volts:<br><input name="volts" value="{{ producto.volts }}"></label><br>
+        <label>Precio:<br><input name="precio" value="{{ producto.precio }}"></label><br>
+        <label>Estado:<br><input name="estado" value="{{ producto.estado }}"></label><br>
+        <label>Ubicación:<br><input name="ubicacion" value="{{ producto.ubicacion }}"></label><br>
+        <label>Fecha registro:<br><input name="fecha_registro" value="{{ producto.fecha_registro }}"></label><br>
+        <label>Observación:<br><textarea name="observacion">{{ producto.observacion }}</textarea></label><br>
+
+        <button type="submit">Guardar cambios</button>
+    </form>
+
+    <br>
+    <a href="{{ url_for('productos_all') }}">🔙 Volver a productos</a>
+</body>
+</html>

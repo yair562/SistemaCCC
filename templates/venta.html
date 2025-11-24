@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Venta de Productos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/venta.css') }}">
+</head>
+<body>
+    <h1>Venta</h1>
+
+    <div class="toolbar">
+        <div class="left">
+            <div class="ls-badge">
+                <img src="{{ url_for('static', filename='images/CCClogo.jpg') }}" alt="logo">
+                <div>Inventario CCC</div>
+            </div>
+            <div class="back-links">
+                <a href="{{ url_for('admin') }}">🏠 Panel</a>
+            </div>
+        </div>
+        <div class="right">
+            <form id="searchForm" method="get" action="{{ url_for('venta') }}">
+                <input id="searchInput" type="text" name="q" placeholder="Buscar por SKU, marca, modelo o escanear" value="{{ q if q is defined else '' }}">
+                <button type="submit">🔎 Buscar</button>
+                <input id="scannerInput" type="text" placeholder="Escanea aquí">
+                <button id="focusScanner" type="button">🎯 Scan</button>
+                <!-- Simular escaneo (útil para pruebas en otras PCs) -->
+                <!-- Controles del scanner del servidor -->
+                <button id="startServerScan" type="button">Iniciar scanner (servidor)</button>
+                <button id="stopServerScan" type="button">Detener scanner</button>
+                <span id="scannerStatus">Inactivo</span>
+            </form>
+        </div>
+    </div>
+    <section class="section section-top">
+        <h2>Buscar equipos para cambiar a VENTA</h2>
+        <div class="table-wrap">
+                <table class="productos">
+                <tr>
+                    <th>ID</th>
+                    <th>SKU</th>
+                    <th>Tipo</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>No. Serie</th>
+                    <th>Precio</th>
+                    <th>Acción</th>
+                </tr>
+                <tbody id="searchResultsBody">
+                {% if search_results %}
+                    {% for p in search_results %}
+                    <tr>
+                        <td>{{ p[0] }}</td>
+                        <td>{{ p[1] }}</td>
+                        <td>{{ p[3] }}</td>
+                        <td>{{ p[4] }}</td>
+                        <td>{{ p[5] }}</td>
+                        <td>{{ p[6] }}</td>
+                        <td>{{ p[8] }}</td>
+                        <td>
+                            <form method="post" action="{{ url_for('venta_update_status') }}" style="display:inline">
+                                <input type="hidden" name="rowid" value="{{ p[0] }}">
+                                <input class="small-input" type="text" name="precio" placeholder="Precio (opcional)">
+                                <button type="submit">Poner a VENTA</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="8">Use el buscador para encontrar equipos y ponerlos en estado VENTA.</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section style="margin-top:18px">
+    <section class="section section-mid">
+        <h2>Equipos en estado VENTA</h2>
+        <div class="table-wrap">
+            <table class="productos">
+                <tr>
+                    <th>ID</th>
+                    <th>SKU</th>
+                    <th>Tipo</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>No. Serie</th>
+                    <th>Precio</th>
+                    <th>Acciones</th>
+                </tr>
+                {% if productos_venta %}
+                    {% for p in productos_venta %}
+                    <tr>
+                        <td>{{ p[0] }}</td>
+                        <td>{{ p[1] }}</td>
+                        <td>{{ p[3] }}</td>
+                        <td>{{ p[4] }}</td>
+                        <td>{{ p[5] }}</td>
+                        <td>{{ p[6] }}</td>
+                        <td>{{ p[8] }}</td>
+                        <td>
+                            <form method="get" action="{{ url_for('request_edit', rowid=p[0]) }}" style="display:inline">
+                                <button type="submit">Editar</button>
+                            </form>
+                            <form method="post" action="{{ url_for('venta_update_price') }}" style="display:inline; margin-left:8px">
+                                <input type="hidden" name="rowid" value="{{ p[0] }}">
+                                <input class="small-input-wide" type="text" name="precio" placeholder="Nuevo precio">
+                                <label class="label-inline">
+                                    <input type="radio" name="scope" value="single" checked> Solo este
+                                </label>
+                                <label class="label-inline">
+                                    <input type="radio" name="scope" value="category"> Toda la categoría
+                                </label>
+                                <button type="submit" onclick="return confirmBulkPrice(event, this)">Actualizar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="8">No hay productos en estado VENTA.</td></tr>
+                {% endif %}
+            </table>
+        </div>
+    </section>
+
+    
+
+    <script>
+        // Simular escaneo desde UI (útil para pruebas en red)
+        const simulateBtn = document.getElementById('simulateBtn');
+        const simulateInput = document.getElementById('simulateInput');
+        if(simulateBtn){
+            simulateBtn.addEventListener('click', async ()=>{
+                const code = (simulateInput && simulateInput.value || '').trim();
+                if(!code) return alert('Ingresa un código para simular');
+                try{
+                    const r = await fetch('/simulate_scan', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code})});
+                    const j = await r.json();
+                    if(r.ok && j.ok){ alert('Simulado: '+j.code); }
+                    else alert('Error: '+(j.msg||r.status));
+                }catch(e){ alert('Error: '+e.message) }
+            });
+        }
+        // Enfocar input del scanner al presionar el botón
+        const focusBtn = document.getElementById('focusScanner');
+        if(focusBtn){
+            focusBtn.addEventListener('click', function(){
+                const s = document.getElementById('scannerInput');
+                if(s){ s.focus(); s.select(); }
+            });
+        }
+
+        const scanner = document.getElementById('scannerInput');
+        async function performScanSearch(code){
+            // Populate the scanner input but do not change the main search input.
+            const s = document.getElementById('scannerInput');
+            if(s) s.value = code;
+            // Try product_by_serial first (exact match). If found, render in the search results table.
+            try{
+                const r = await fetch('/product_by_serial?no=' + encodeURIComponent(code));
+                if(r.ok){
+                    const j = await r.json();
+                    if(j.ok && j.data){
+                        const body = document.getElementById('searchResultsBody');
+                        if(body){
+                            const p = j.data;
+                            body.innerHTML = `\
+                                <tr>\
+                                    <td>${p.rowid}</td>\
+                                    <td>${p.sku || ''}</td>\
+                                    <td>${p.tipo || ''}</td>\
+                                    <td>${p.marca || ''}</td>\
+                                    <td>${p.modelo || ''}</td>\
+                                    <td>${p.no_serie || ''}</td>\
+                                    <td>${p.precio || ''}</td>\
+                                    <td>\
+                                        <form method="post" action="/venta/update_status" style="display:inline">\
+                                            <input type="hidden" name="rowid" value="${p.rowid}">\
+                                            <input type="text" name="precio" placeholder="Precio (opcional)" style="width:100px">\
+                                            <button type="submit">Poner a VENTA</button>\
+                                        </form>\
+                                    </td>\
+                                </tr>`;
+                            // scroll into view
+                            body.closest('table').scrollIntoView({behavior:'smooth'});
+                        }
+                        return;
+                    }
+                }
+            }catch(e){
+                // fall through to fallback
+            }
+            // fallback: redirect to server search which will populate results and q input
+            window.location.href = '/venta?q=' + encodeURIComponent(code) + '&search_field=no_serie';
+        }
+
+        if(scanner){
+            scanner.addEventListener('keydown', function(e){
+                if(e.key === 'Enter'){
+                    e.preventDefault();
+                    const code = this.value.trim();
+                    if(!code) return;
+                    performScanSearch(code);
+                }
+            });
+        }
+
+        function confirmBulkPrice(e, btn){
+            // Si el usuario seleccionó 'category' preguntar confirmación
+            const form = btn.closest('form');
+            if(!form) return true;
+            const scope = Array.from(form.querySelectorAll('input[name="scope"]')).find(r=>r.checked);
+            if(scope && scope.value === 'category'){
+                const ok = confirm('¿Deseas aplicar el nuevo precio a TODOS los productos de esta categoría?');
+                if(!ok){
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // ------------------ Integración con scanner del servidor ------------------
+        const startBtn = document.getElementById('startServerScan');
+        const stopBtn = document.getElementById('stopServerScan');
+        const scannerStatus = document.getElementById('scannerStatus');
+        let serverScanning = false;
+        let pollInterval = null;
+
+        async function startServerScanner(){
+            try{
+                const r = await fetch('/start_scanner');
+                const j = await r.json();
+                if(r.ok && j.ok){
+                    serverScanning = true;
+                    scannerStatus.textContent = 'Activo — ' + (j.msg || 'escaneando');
+                    scannerStatus.style.color = 'green';
+                    startPolling();
+                } else {
+                    scannerStatus.textContent = 'Error: ' + (j.msg || r.status);
+                    scannerStatus.style.color = 'crimson';
+                }
+            }catch(e){
+                scannerStatus.textContent = 'Error: ' + e.message;
+                scannerStatus.style.color = 'crimson';
+            }
+        }
+
+        async function stopServerScanner(){
+            try{
+                const r = await fetch('/stop_scanner');
+                const j = await r.json();
+                serverScanning = false;
+                scannerStatus.textContent = (j && j.msg) ? j.msg : 'Detenido';
+                scannerStatus.style.color = '#333';
+                stopPolling();
+            }catch(e){
+                scannerStatus.textContent = 'Error: ' + e.message;
+                scannerStatus.style.color = 'crimson';
+            }
+        }
+
+        function startPolling(){
+            if(pollInterval) return;
+            pollInterval = setInterval(async ()=>{
+                if(!serverScanning) return;
+                try{
+                    const r = await fetch('/last_scanned');
+                    if(!r.ok) return;
+                    const j = await r.json();
+                    if(j && j.code){
+                        // evitar múltiples redirecciones
+                        serverScanning = false;
+                        stopPolling();
+                        // redirigir a la búsqueda por número de serie
+                        const code = encodeURIComponent(j.code);
+                        window.location.href = '/venta?q=' + code + '&search_field=no_serie';
+                    }
+                }catch(e){
+                    // ignore transient errors
+                }
+            }, 700);
+        }
+
+        function stopPolling(){
+            if(pollInterval){
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+
+        if(startBtn) startBtn.addEventListener('click', startServerScanner);
+        if(stopBtn) stopBtn.addEventListener('click', stopServerScanner);
+    </script>
+    <script>
+function pollScan() {
+    fetch('/last_scanned')
+    .then(r => r.json())
+    .then(d => {
+        if (d.codigo) {
+            const inp = document.getElementById("scan_input");
+            if (inp) {
+                inp.value = d.codigo;
+                inp.dispatchEvent(new Event("input"));
+            }
+        }
+    })
+    .finally(() => setTimeout(pollScan, 300));
+}
+
+pollScan();
+</script>
+
+</body>
+</html>

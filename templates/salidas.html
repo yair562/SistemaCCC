@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Salidas recientes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/salidas.css') }}">
+</head>
+<body data-q="{{ q if q else '' }}">
+    <div class="toolbar">
+        <div class="left">
+            <h1>Salidas</h1>
+        </div>
+        <div class="right">
+            <a class="back" href="{{ url_for('admin') }}">🔙 Panel</a>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button id="tabVenta">Venta (marcar VENDIDO)</button>
+        <button id="tabSalida">Salida (Donar / Basura)</button>
+    </div>
+
+    <div id="panelVenta" class="panel">
+        <h2>Productos en venta</h2>
+        {% if productos_venta %}
+        <table class="productos">
+            <tr><th>SKU</th><th>Marca</th><th>Modelo</th><th>Precio</th><th>Acción</th></tr>
+            {% for p in productos_venta %}
+            <tr>
+                <td>{{ p[1] }}</td>
+                <td>{{ p[4] }}</td>
+                <td>{{ p[5] }}</td>
+                <td>{{ p[8] }}</td>
+                <td><button class="markSold" data-rowid="{{ p[0] }}">Marcar VENDIDO</button></td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+            <p>No hay productos en estado <strong>VENTA</strong> con precio.</p>
+        {% endif %}
+    </div>
+
+    <div id="panelSalida" class="panel hidden">
+        <h2>Buscar producto para salida</h2>
+        <form id="searchForm">
+            <input type="text" name="q" id="searchQ" placeholder="SKU, marca, modelo o no. serie" value="{{ q if q is defined else '' }}">
+            <select id="searchField" name="search_field">
+                <option value="">Busca en varios campos</option>
+                <option value="no_serie">No. Serie</option>
+            </select>
+            <button type="submit">Buscar</button>
+                <!-- Simular escaneo localmente -->
+                <input id="simulateInput" type="text" placeholder="Simular código">
+                <button id="simulateBtn" type="button">Simular</button>
+        </form>
+
+        <div id="searchResults">
+        {% if search_results %}
+            <table class="productos">
+                <tr><th>SKU</th><th>Marca</th><th>Modelo</th><th>Estado</th><th>Acciones</th></tr>
+                {% for s in search_results %}
+                <tr>
+                    <td>{{ s[1] }}</td>
+                    <td>{{ s[4] }}</td>
+                    <td>{{ s[5] }}</td>
+                    <td>{{ s[9] }}</td>
+                    <td>
+                        <button class="markOut" data-rowid="{{ s[0] }}" data-accion="DONADO">Donar</button>
+                        <button class="markOut" data-rowid="{{ s[0] }}" data-accion="BASURA">Basura</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p id="noResults">Sin resultados. Usa el buscador para encontrar el producto.</p>
+        {% endif %}
+        </div>
+    </div>
+
+    <div id="msg"></div>
+    <script>
+        // Tab switching
+        const tabVenta = document.getElementById('tabVenta');
+        const tabSalida = document.getElementById('tabSalida');
+        const panelVenta = document.getElementById('panelVenta');
+        const panelSalida = document.getElementById('panelSalida');
+        const msg = document.getElementById('msg');
+
+        function showVenta(){
+            tabVenta.classList.add('active'); tabSalida.classList.remove('active');
+            panelVenta.classList.remove('hidden'); panelSalida.classList.add('hidden');
+        }
+        function showSalida(){
+            tabSalida.classList.add('active'); tabVenta.classList.remove('active');
+            panelSalida.classList.remove('hidden'); panelVenta.classList.add('hidden');
+        }
+        tabVenta.addEventListener('click', showVenta);
+        tabSalida.addEventListener('click', showSalida);
+
+        // Inicializar pestaña según si hay búsqueda (q) — si el usuario llegó con q, mostrar Salida
+        const initialQ = document.body.getAttribute('data-q') || '';
+        if(initialQ && initialQ.length > 0){
+            showSalida();
+        } else {
+            showVenta();
+        }
+
+        // marcar vendido
+        document.querySelectorAll('.markSold').forEach(b => {
+            b.addEventListener('click', async function(){
+                const rowid = this.dataset.rowid;
+                if(!confirm('Marcar este producto como VENDIDO?')) return;
+                try{
+                    const r = await fetch('/salidas/mark_sold', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rowid})});
+                    const j = await r.json();
+                    if(r.ok && j.ok){ msg.textContent = j.msg; this.disabled = true; setTimeout(()=>location.reload(),700); }
+                    else { msg.textContent = j.msg || 'Error'; }
+                }catch(e){ msg.textContent = e.message }
+            })
+        })
+
+        // marcar donado/obsoleto
+        document.querySelectorAll('.markOut').forEach(b => {
+            b.addEventListener('click', async function(){
+                const rowid = this.dataset.rowid; const accion = this.dataset.accion;
+                if(!confirm(`Marcar como ${accion}? Esta acción actualizará el estado en la base de datos.`)) return;
+                try{
+                    const r = await fetch('/salidas/mark_out', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rowid, accion})});
+                    const j = await r.json();
+                    if(r.ok && j.ok){ msg.textContent = j.msg; this.disabled = true; setTimeout(()=>location.reload(),700); }
+                    else { msg.textContent = j.msg || 'Error'; }
+                }catch(e){ msg.textContent = e.message }
+            })
+        })
+
+        // buscar desde la UI
+        const searchForm = document.getElementById('searchForm');
+        if(searchForm){
+            searchForm.addEventListener('submit', function(e){
+                e.preventDefault();
+                const q = document.getElementById('searchQ').value.trim();
+                const f = document.getElementById('searchField').value;
+                const params = new URLSearchParams();
+                if(q) params.set('q', q);
+                if(f) params.set('search_field', f);
+                window.location.href = '/salidas?' + params.toString();
+            })
+        }
+    </script>
+</body>
+</html>

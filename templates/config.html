@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Configuración</title>
+</head>
+<body>
+    <h1>Configuración</h1>
+    <ul>
+        <li>Nombre del sitio: {{ settings.sitio }}</li>
+        <li>Modo debug: {{ settings.modo_debug }}</li>
+    </ul>
+
+    <br>
+    <a href="{{ url_for('admin') }}">🔙 Volver al panel</a>
+</body>
+</html>

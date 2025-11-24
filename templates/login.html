@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Inventario de Alto Prestigio</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-content">
+            <div class="logo">
+             <div class="logo-circle">
+                  <img src="{{ url_for('static', filename='images/CCClogo.jpg') }}" alt="Logo">
+
+             </div>
+            </div>
+
+            <h2>SISTEMA DE INVENTARIO BODEGA CCC</h2>
+            <form method="POST">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" name="usuario" placeholder="Usuario" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" name="password" placeholder="Contraseña" required>
+                </div>
+                <button type="submit" class="pulse">ACCEDER AL SISTEMA</button>
+            </form>
+            <div class="additional-info">
+                Sistema exclusivo para personal autorizado
+            </div>
+            {% if mensaje %}
+                <p class="mensaje">{{ mensaje }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Efecto de escritura al título
+        document.addEventListener('DOMContentLoaded', function() {
+            const title = document.querySelector('h2');
+            const originalText = title.textContent;
+            title.textContent = '';
+            
+            let i = 0;
+            const typeWriter = () => {
+                if (i < originalText.length) {
+                    title.textContent += originalText.charAt(i);
+                    i++;
+                    setTimeout(typeWriter, 100);
+                }
+            };
+            
+            setTimeout(typeWriter, 500);
+        });
+    </script>
+</body>
+</html>

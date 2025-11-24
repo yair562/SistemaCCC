@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registrar Entrada de Producto</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/entradas.css') }}">
+</head>
+<body>
+    <h1>Registrar Entrada</h1>
+    {% if error %}
+    <div style="background:#ffd6d6;border:1px solid #ff9c9c;padding:10px;border-radius:6px;margin-bottom:10px;color:#800">{{ error }}</div>
+    {% endif %}
+    <a href="{{ url_for('admin') }}">🔙 Volver al panel</a>
+
+    <form id="entradaForm" method="post" action="{{ url_for('entradas_register') }}">
+        <div class="grid">
+            <div>
+                <div class="form-row">
+                    <label for="prefijo">Prefijo SKU (elige existente o escribe uno nuevo)</label>
+                    <div class="input-inline">
+                        <input id="prefijo" name="prefijo" list="prefijos_list" placeholder="Escribe o elige un prefijo" value="{{ form.get('prefijo','') if form is defined else '' }}">
+                        <datalist id="prefijos_list">
+                            {% for p in prefixes %}
+                            <option value="{{ p }}"></option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label for="sku">SKU (se autogenera con el consecutivo)</label>
+                    <div style="display:flex; gap:8px; align-items:center">
+                        <input id="sku" name="sku" type="text" placeholder="Prefijo-123" readonly value="{{ form.get('sku','') if form is defined else '' }}">
+                        <button id="genSku" type="button">Generar siguiente SKU</button>
+                        <select id="existingSkus" style="margin-left:8px;padding:8px;border-radius:8px">
+                            <option value="">-- SKUs existentes --</option>
+                        </select>
+                        <span id="selSkuTipo" style="margin-left:8px;color:var(--muted);font-weight:600"></span>
+                    </div>
+                </div>
+                <!-- ID original se gestiona internamente, no lo editamos -->
+                <div class="form-row">
+                    <label for="tipo">Tipo</label>
+                    <input id="tipo" name="tipo" list="tipo_list" value="{{ form.get('tipo','') if form is defined else '' }}">
+                    <datalist id="tipo_list"></datalist>
+                </div>
+                <div class="form-row">
+                    <label for="marca">Marca</label>
+                    <input id="marca" name="marca" list="marca_list" value="{{ form.get('marca','') if form is defined else '' }}">
+                    <datalist id="marca_list"></datalist>
+                </div>
+                <div class="form-row">
+                    <label for="modelo">Modelo</label>
+                    <input id="modelo" name="modelo" list="modelo_list" value="{{ form.get('modelo','') if form is defined else '' }}">
+                    <datalist id="modelo_list"></datalist>
+                </div>
+            </div>
+            <div>
+                    <div class="form-row">
+                        <label for="no_serie">No. Serie (scanner o teclado)</label>
+                        <div style="display:flex; gap:8px; align-items:center">
+                            <input id="no_serie" name="no_serie" type="text" placeholder="Escanea o escribe el no. serie" value="{{ form.get('no_serie','') if form is defined else '' }}">
+                            <button id="focusNoSerie" type="button">🎯 Scan</button>
+                            <button id="startServerScan" type="button" style="margin-left:8px">Iniciar scanner (servidor)</button>
+                            <button id="stopServerScan" type="button" style="margin-left:6px">Detener scanner</button>
+                            <span id="scannerStatus" style="margin-left:8px; font-weight:600; color:#333">Inactivo</span>
+                        </div>
+                    </div>
+                <!-- Volts se gestiona internamente, no lo editamos -->
+                <div class="form-row">
+                    <label for="precio">Precio</label>
+                    <input id="precio" name="precio" type="text" value="{{ form.get('precio','') if form is defined else '' }}">
+                </div>
+                <div class="form-row">
+                    <label for="estado">Estado</label>
+                    <input id="estado" name="estado" list="estado_list" value="{{ form.get('estado','') if form is defined else '' }}">
+                    <datalist id="estado_list"></datalist>
+                </div>
+                <div class="form-row">
+                    <label for="ubicacion">Ubicación</label>
+                    <input id="ubicacion" name="ubicacion" list="ubicacion_list" value="{{ form.get('ubicacion','') if form is defined else '' }}">
+                    <datalist id="ubicacion_list"></datalist>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label for="observacion">Observación</label>
+            <textarea id="observacion" name="observacion" rows="3">{{ form.get('observacion','') if form is defined else '' }}</textarea>
+        </div>
+
+        <div class="actions">
+            <button type="submit">Registrar entrada</button>
+        </div>
+    </form>
+
+    <script>
+        // Helper to fetch JSON
+        async function getJSON(url){
+            const r = await fetch(url);
+            if(!r.ok) throw new Error('HTTP '+r.status);
+            return r.json();
+        }
+
+        const prefijoEl = document.getElementById('prefijo');
+        const skuEl = document.getElementById('sku');
+        const genBtn = document.getElementById('genSku');
+        const focusNo = document.getElementById('focusNoSerie');
+        const noSerie = document.getElementById('no_serie');
+
+        async function loadOptionsFor(pref){
+            if(!pref) return;
+            try{
+                const j = await getJSON('/entradas/options?prefijo=' + encodeURIComponent(pref));
+                if(j.ok){
+                    const data = j.data;
+                    // fill datalists
+                    for(const k of ['tipo','marca','modelo','estado','ubicacion']){
+                        const listId = k + '_list';
+                        const list = document.getElementById(listId);
+                        if(!list) continue;
+                        list.innerHTML = '';
+                        (data[k]||[]).forEach(v=>{
+                            const opt = document.createElement('option'); opt.value = v; list.appendChild(opt);
+                        });
+                    }
+                }
+            }catch(e){
+                console.warn('options error', e);
+            }
+        }
+
+        async function genNextSKU(pref){
+            if(!pref) return;
+            try{
+                const j = await getJSON('/entradas/next_sku?prefijo=' + encodeURIComponent(pref));
+                if(j.ok){
+                    skuEl.value = j.next_sku;
+                }
+            }catch(e){ console.warn(e); }
+        }
+
+        if(prefijoEl){
+            // use input event so typing also triggers option load when user stops typing
+            let prefijoTimer = null;
+            prefijoEl.addEventListener('input', async function(){
+                const v = this.value.trim();
+                if(!v) return;
+                // debounce
+                if(prefijoTimer) clearTimeout(prefijoTimer);
+                prefijoTimer = setTimeout(async ()=>{
+                    await genNextSKU(v);
+                    await loadOptionsFor(v);
+                    // load existing SKUs for this prefix
+                    try{
+                        const r = await getJSON('/entradas/skus?prefijo=' + encodeURIComponent(v));
+                        if(r.ok){
+                            const sel = document.getElementById('existingSkus');
+                            sel.innerHTML = '<option value="">-- SKUs existentes --</option>';
+                            (r.data||[]).forEach(item=>{
+                                const opt = document.createElement('option');
+                                opt.value = item.sku;
+                                opt.dataset.tipo = item.tipo || '';
+                                opt.text = item.sku + ' — ' + (item.tipo || '');
+                                sel.appendChild(opt);
+                            });
+                        }
+                    }catch(e){/*ignore*/}
+                }, 300);
+            });
+        }
+
+        if(genBtn){
+            genBtn.addEventListener('click', async ()=>{
+                const v = prefijoEl.value || '';
+                if(!v){ alert('Selecciona o escribe un prefijo primero'); return; }
+                await genNextSKU(v);
+            });
+        }
+
+        // when selecting an existing sku, show tipo and fetch its details and prefill
+        const existingSkus = document.getElementById('existingSkus');
+        const selSkuTipo = document.getElementById('selSkuTipo');
+        if(existingSkus){
+            existingSkus.addEventListener('change', async function(){
+                const sku = this.value;
+                const selOpt = this.options[this.selectedIndex];
+                if(selSkuTipo) selSkuTipo.textContent = (selOpt && selOpt.dataset) ? (selOpt.dataset.tipo || '') : '';
+                if(!sku) return;
+                try{
+                    const r = await getJSON('/product_by_sku?sku=' + encodeURIComponent(sku));
+                    if(r.ok && r.data){
+                        skuEl.value = r.data.sku || sku;
+                        document.getElementById('tipo').value = r.data.tipo || '';
+                        document.getElementById('marca').value = r.data.marca || '';
+                        document.getElementById('modelo').value = r.data.modelo || '';
+                        document.getElementById('no_serie').value = r.data.no_serie || '';
+                        document.getElementById('precio').value = r.data.precio || '';
+                        document.getElementById('estado').value = r.data.estado || '';
+                        document.getElementById('ubicacion').value = r.data.ubicacion || '';
+                    }
+                }catch(e){/*ignore*/}
+            });
+        }
+
+        if(focusNo){
+            focusNo.addEventListener('click', ()=>{ noSerie.focus(); noSerie.select(); });
+        }
+
+        // Server scanner integration: poll /last_scanned and set no_serie
+        let serverScanActive = false; // indicates whether we expect server scanning
+        let pollInterval = null;
+
+        async function startServerScanner(){
+            try{
+                const r = await fetch('/start_scanner');
+                const j = await r.json();
+                if(r.ok && j.ok){
+                    serverScanActive = true;
+                    scannerStatus.textContent = 'Activo — ' + (j.msg || 'escaneando');
+                    scannerStatus.style.color = 'green';
+                    startPolling();
+                } else {
+                    scannerStatus.textContent = 'Error: ' + (j.msg || r.status);
+                    scannerStatus.style.color = 'crimson';
+                }
+            }catch(e){
+                scannerStatus.textContent = 'Error: ' + e.message;
+                scannerStatus.style.color = 'crimson';
+            }
+        }
+
+        async function stopServerScanner(){
+            try{
+                const r = await fetch('/stop_scanner');
+                const j = await r.json();
+                serverScanActive = false;
+                scannerStatus.textContent = (j && j.msg) ? j.msg : 'Detenido';
+                scannerStatus.style.color = '#333';
+                stopPolling();
+            }catch(e){
+                scannerStatus.textContent = 'Error: ' + e.message;
+                scannerStatus.style.color = 'crimson';
+            }
+        }
+
+        function startPolling(){
+            if(pollInterval) return;
+            pollInterval = setInterval(async ()=>{
+                if(!serverScanActive) return;
+                try{
+                    const r = await fetch('/last_scanned');
+                    if(!r.ok) return;
+                    const j = await r.json();
+                    if(j && j.code){
+                        // fill no_serie and prefill fields if product exists
+                        noSerie.value = j.code;
+                        try{
+                            const p = await fetch('/product_by_serial?no=' + encodeURIComponent(j.code));
+                            if(p.ok){
+                                const pj = await p.json();
+                                if(pj.ok && pj.data){
+                                    document.getElementById('marca').value = pj.data.marca || '';
+                                    document.getElementById('modelo').value = pj.data.modelo || '';
+                                    document.getElementById('tipo').value = pj.data.tipo || '';
+                                    document.getElementById('ubicacion').value = pj.data.ubicacion || '';
+                                    // also generate SKU if prefijo selected
+                                    const pref = prefijoEl.value;
+                                    if(pref) genNextSKU(pref);
+                                }
+                            }
+                        }catch(e){}
+                    }
+                }catch(e){ }
+            }, 700);
+        }
+
+        function stopPolling(){ if(pollInterval){ clearInterval(pollInterval); pollInterval=null; } }
+
+        // Hook up start/stop buttons
+        const startBtn = document.getElementById('startServerScan');
+        const stopBtn = document.getElementById('stopServerScan');
+        const scannerStatus = document.getElementById('scannerStatus');
+        if(startBtn) startBtn.addEventListener('click', startServerScanner);
+        if(stopBtn) stopBtn.addEventListener('click', stopServerScanner);
+
+    </script>
+</body>
+</html>

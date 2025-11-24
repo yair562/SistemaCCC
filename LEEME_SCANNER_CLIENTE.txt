@@ -1,0 +1,17 @@
+# Instrucciones para usar el scanner en cualquier PC cliente
+
+1. Asegúrate de que el servidor Flask esté corriendo y tenga una IP fija en la red (ejemplo: 192.168.1.10).
+2. Conecta el scanner a la PC cliente.
+3. Haz doble clic en `iniciar_scanner_cliente.bat` (no necesitas abrir código ni consola manualmente).
+   - El script detecta el scanner y reenvía los códigos al servidor automáticamente.
+   - Si tienes un entorno virtual, lo activa automáticamente.
+4. Abre el sistema en el navegador y usa las funciones de escaneo normalmente.
+
+**No uses el botón "Iniciar scanner (servidor)" salvo que el scanner esté conectado al servidor.**
+
+Si cambias la IP del servidor, edita el archivo `iniciar_scanner_cliente.bat` y pon la nueva IP en la línea:
+```
+SET SERVER_IP=192.168.1.10
+```
+
+**Listo!** Así cualquier usuario puede conectar y usar el scanner sin tocar el código fuente.

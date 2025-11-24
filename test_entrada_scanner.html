@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Prueba de Entrada con Scanner</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        #code { font-size: 2em; color: green; margin: 1em 0; }
+        #status { color: #555; margin-bottom: 1em; }
+        input[type=text] { font-size: 1.5em; padding: 0.5em; width: 300px; }
+    </style>
+</head>
+<body>
+    <h2>Prueba de Entrada con Scanner</h2>
+    <div id="status">Esperando escaneo...</div>
+    <input id="scannerInput" type="text" placeholder="Escanea aquí" autofocus autocomplete="off">
+    <div id="code"></div>
+    <script>
+    const input = document.getElementById('scannerInput');
+    const codeDiv = document.getElementById('code');
+    const status = document.getElementById('status');
+    input.focus();
+    input.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){
+            e.preventDefault();
+            const code = input.value.trim();
+            if(!code) return;
+            codeDiv.textContent = code;
+            status.textContent = 'Enviado a backend...';
+            fetch('/push_scan', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({code})
+            }).then(r=>r.json()).then(j=>{
+                status.textContent = j.ok ? 'OK recibido' : 'Error: ' + (j.msg||'');
+            }).catch(e=>{
+                status.textContent = 'Error de red: ' + e.message;
+            });
+            input.value = '';
+        }
+    });
+    </script>
+</body>
+</html>

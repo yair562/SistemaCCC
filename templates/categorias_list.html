@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Categorías</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+
+    <div class="toolbar">
+        <div class="left">
+            <div class="ls-badge">
+                <img src="{{ url_for('static', filename='images/CCClogo.jpg') }}" alt="logo">
+                <div>Inventario CCC</div>
+            </div>
+        </div>
+        <div class="right">
+            <a href="{{ url_for('admin') }}">🏠 Panel</a>
+        </div>
+    </div>
+
+    <h1 style="margin-top:6px">📦 Categorías de Inventario</h1>
+
+    <div class="categories-container">
+        {% for prefijo, nombre in categorias.items() %}
+        <div class="category-card">
+            <div>
+                <h3 id="name_{{ prefijo }}">{{ nombre }}</h3>
+                <p><strong>{{ prefijo }}</strong> — Código de categoría</p>
+            </div>
+            <div class="category-actions">
+                <a class="btn-primary" href="{{ url_for('productos_por_categoria', prefijo=prefijo) }}">Ver productos</a>
+                <button class="btn-ghost" onclick="editCategory('{{ prefijo }}')">✏️ Editar nombre</button>
+            </div>
+            <div style="margin-top:8px; display:none" id="editbox_{{ prefijo }}">
+                <input type="text" id="input_{{ prefijo }}" value="{{ nombre }}" style="padding:8px;border-radius:8px;border:1px solid #ddd;width:100%">
+                <div style="display:flex; gap:8px; margin-top:8px">
+                    <button class="btn-primary" onclick="saveCategory('{{ prefijo }}')">Guardar</button>
+                    <button class="btn-secondary" onclick="cancelEdit('{{ prefijo }}')">Cancelar</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        async function postForm(url, data){
+            const form = new FormData();
+            for(const k in data) form.append(k, data[k]);
+            const r = await fetch(url, {method:'POST', body: form});
+            return r.json().catch(()=>({ok:false}));
+        }
+
+        function editCategory(pref){
+            document.getElementById('editbox_'+pref).style.display = 'block';
+        }
+        function cancelEdit(pref){
+            document.getElementById('editbox_'+pref).style.display = 'none';
+        }
+        async function saveCategory(pref){
+            const val = document.getElementById('input_'+pref).value.trim();
+            const res = await postForm('/categorias/update', {prefijo: pref, nombre: val});
+            if(res && res.ok){
+                document.getElementById('name_'+pref).textContent = val || pref;
+                cancelEdit(pref);
+            } else {
+                alert('Error: ' + (res.msg || 'no se pudo guardar'));
+            }
+        }
+    </script>
+
+
+</body>
+</html>

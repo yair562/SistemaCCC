@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Productos {{ categoria }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/productos_list.css') }}">
+</head>
+<body>
+    <h1>Productos en {{ categoria }}</h1>
+
+    <div class="toolbar">
+        <div class="left">
+            <div class="ls-badge">
+                <img src="{{ url_for('static', filename='images/CCClogo.jpg') }}" alt="logo">
+                <div>Inventario CCC</div>
+            </div>
+            <div class="back-links">
+                <a href="{{ url_for('admin') }}">🏠 Panel</a>
+            </div>
+        </div>
+        <div class="right">
+            <form id="searchForm" method="get" 
+        {% if prefijo is defined and prefijo %}
+            action="{{ url_for('productos_por_categoria', prefijo=prefijo) }}"
+        {% else %}
+            action="{{ url_for('productos_all') }}"
+        {% endif %}
+
+            >
+                <input id="searchInput" type="text" name="q" placeholder="Buscar por SKU, marca o modelo" value="{{ q if q is defined else '' }}">
+                <button type="submit">🔎</button>
+                {% if prefijo is defined and prefijo %}
+                    <a href="{{ url_for('productos_all') }}">Ver todos</a>
+                {% endif %}
+                <!-- Input para scanner (muchos scanners actúan como teclado y envían Enter) -->
+                <input id="scannerInput" type="text" placeholder="Escanea aquí">
+                <button id="focusScanner" type="button">🎯 Scan</button>
+                <!-- Simular escaneo (testing) -->
+                <input id="simulateInput" type="text" placeholder="Simular código" style="width:140px">
+                <button id="simulateBtn" type="button">Simular</button>
+                <!-- Controles del scanner del servidor -->
+                <button id="startServerScan" type="button">Iniciar scanner (servidor)</button>
+                <button id="stopServerScan" type="button">Detener scanner</button>
+                <span id="scannerStatus">Inactivo</span>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+    <table class="productos">
+    <tr>
+        <th>ID</th>
+        <th>SKU</th>
+        <th>ID Original</th>
+        <th>Tipo</th>
+        <th>Marca</th>
+        <th>Modelo</th>
+        <th>No. Serie</th>
+        <th>Volts</th>
+        <th>Precio</th>
+        <th>Estado</th>
+        <th>Ubicación</th>
+        <th>Fecha registro</th>
+        <th>Observación</th>
+        <th>Acciones</th>
+    </tr>
+
+    {% if productos %}
+        {% for p in productos %}
+        <tr>
+            <td>{{ p[0] }}</td>
+            <td>{{ p[1] }}</td>
+            <td>{{ p[2] }}</td>
+            <td>{{ p[3] }}</td>
+            <td>{{ p[4] }}</td>
+            <td>{{ p[5] }}</td>
+            <td>{{ p[6] }}</td>
+            <td>{{ p[7] }}</td>
+            <td>{{ p[8] }}</td>
+            <td>{{ p[9] }}</td>
+            <td>{{ p[10] }}</td>
+            <td>{{ p[11] }}</td>
+            <td>{{ p[13] }}</td>
+            <td>
+                <form method="get" action="{{ url_for('request_edit', rowid=p[0]) }}" style="display:inline">
+                    <button type="submit">Editar</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr><td colspan="14">No se encontraron productos.</td></tr>
+    {% endif %}
+    </table>
+    </div>
+    <script>
+        // Enfocar input del scanner al presionar el botón
+        const focusBtn = document.getElementById('focusScanner');
+        if(focusBtn){
+            focusBtn.addEventListener('click', function(){
+                const s = document.getElementById('scannerInput');
+                if(s){ s.focus(); s.select(); }
+            });
+        }
+
+        // Cuando el scanner (o teclado) envía Enter en el input scanner, se busca por código exacto
+        const scanner = document.getElementById('scannerInput');
+        if(scanner){
+            scanner.addEventListener('keydown', function(e){
+                if(e.key === 'Enter'){
+                    e.preventDefault();
+                    const code = this.value.trim();
+                    if(!code) return;
+                    // Llamar al endpoint /scan que redirige a productos buscando por no_serie
+                    window.location.href = '/scan?code=' + encodeURIComponent(code);
+                }
+            });
+        }
+
+            // ------------------ Integración con scanner del servidor ------------------
+            const startBtn = document.getElementById('startServerScan');
+            const stopBtn = document.getElementById('stopServerScan');
+            const scannerStatus = document.getElementById('scannerStatus');
+            let serverScanning = false;
+            let pollInterval = null;
+
+            async function startServerScanner(){
+                try{
+                    const r = await fetch('/start_scanner');
+                    const j = await r.json();
+                    if(r.ok && j.ok){
+                        serverScanning = true;
+                        scannerStatus.textContent = 'Activo — ' + (j.msg || 'escaneando');
+                        scannerStatus.style.color = 'green';
+                        startPolling();
+                    } else {
+                        scannerStatus.textContent = 'Error: ' + (j.msg || r.status);
+                        scannerStatus.style.color = 'crimson';
+                    }
+                }catch(e){
+                    scannerStatus.textContent = 'Error: ' + e.message;
+                    scannerStatus.style.color = 'crimson';
+                }
+            }
+
+            async function stopServerScanner(){
+                try{
+                    const r = await fetch('/stop_scanner');
+                    const j = await r.json();
+                    serverScanning = false;
+                    scannerStatus.textContent = (j && j.msg) ? j.msg : 'Detenido';
+                    scannerStatus.style.color = '#333';
+                    stopPolling();
+                }catch(e){
+                    scannerStatus.textContent = 'Error: ' + e.message;
+                    scannerStatus.style.color = 'crimson';
+                }
+            }
+
+            function startPolling(){
+                if(pollInterval) return;
+                pollInterval = setInterval(async ()=>{
+                    if(!serverScanning) return;
+                    try{
+                        const r = await fetch('/last_scanned');
+                        if(!r.ok) return;
+                        const j = await r.json();
+                        if(j && j.code){
+                            // evitar múltiples redirecciones
+                            serverScanning = false;
+                            stopPolling();
+                            // redirigir a la búsqueda por número de serie
+                            const code = encodeURIComponent(j.code);
+                            window.location.href = '/productos?q=' + code + '&search_field=no_serie';
+                        }
+                    }catch(e){
+                        // ignore transient errors
+                    }
+                }, 700);
+            }
+
+            function stopPolling(){
+                if(pollInterval){
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+            }
+
+            if(startBtn) startBtn.addEventListener('click', startServerScanner);
+            if(stopBtn) stopBtn.addEventListener('click', stopServerScanner);
+            // Simular escaneo en productos_list
+            const simulateBtn = document.getElementById('simulateBtn');
+            const simulateInput = document.getElementById('simulateInput');
+            if(simulateBtn){
+                simulateBtn.addEventListener('click', async ()=>{
+                    const code = (simulateInput && simulateInput.value || '').trim();
+                    if(!code) return alert('Ingresa un código para simular');
+                    try{
+                        const r = await fetch('/simulate_scan', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code})});
+                        const j = await r.json();
+                        if(r.ok && j.ok){ alert('Simulado: '+j.code); }
+                        else alert('Error: '+(j.msg||r.status));
+                    }catch(e){ alert('Error: '+e.message) }
+                });
+            }
+    </script>
+</body>
+</html>

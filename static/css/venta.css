@@ -1,0 +1,87 @@
+/* Styles for venta.html extracted from inline styles */
+
+/* Scanner input and controls */
+#scannerInput { margin-left: 8px; padding: 6px 8px; border-radius: 6px; }
+#focusScanner { margin-left: 6px; }
+#startServerScan { margin-left: 12px; }
+#stopServerScan { margin-left: 6px; }
+#scannerStatus { margin-left: 8px; font-weight: 600; color: #333; }
+
+/* Sections spacing */
+.section-top { margin-top: 24px; }
+.section-mid { margin-top: 18px; }
+
+/* Small inputs used for price fields */
+.small-input { width: 100px; }
+.small-input-wide { width: 110px; }
+.label-inline { margin-left: 6px; }
+
+/* Table adjustments */
+.table-wrap { overflow:auto; }
+table.productos { width:100%; border-collapse: collapse; border:1px solid #ccc; }
+table.productos th, table.productos td { padding:6px; border:1px solid #ddd; text-align:left }
+table.productos th { background:#f4f4f4 }
+
+@media (max-width:700px) {
+    table.productos td, table.productos th { font-size:13px }
+}
+/* --- FIX: Acomodar el recuadro azul con todos los botones del buscador y scanner --- */
+
+.toolbar .right {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px 12px;
+}
+
+/* El formulario ahora fluye en varias líneas si es necesario */
+.toolbar .right form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;   /* espacio horizontal y vertical */
+    align-items: center;
+    background: #e7f1ff;       /* tu recuadro azul */
+    padding: 12px;
+    border-radius: 10px;
+}
+
+/* Inputs y botones con tamaño consistente y sin encimarse */
+.toolbar .right form input[type="text"] {
+    padding: 8px 10px;
+    font-size: 15px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    min-width: 160px;
+    flex: 1; /* permite que tomen espacio y no se aplasten */
+}
+
+.toolbar .right form button {
+    padding: 8px 14px;
+    font-size: 15px;
+    border-radius: 8px;
+    border: none;
+    background: #0078ff;
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap; /* evita que el texto se corte raro */
+}
+
+.toolbar .right form span#scannerStatus {
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 6px 4px;
+}
+
+/* Para pantallas pequeñas, se ve bonito sin apretarse */
+@media (max-width: 700px) {
+    .toolbar .right form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .toolbar .right form input[type="text"] {
+        width: 100%;
+    }
+    .toolbar .right form button {
+        width: 100%;
+    }
+}

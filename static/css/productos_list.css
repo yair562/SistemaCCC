@@ -1,0 +1,75 @@
+/* Styles specific to productos_list.html (extracted from inline styles) */
+
+#scannerInput {
+    margin-left: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+#focusScanner {
+    margin-left: 6px;
+}
+
+#startServerScan {
+    margin-left: 12px;
+}
+
+#stopServerScan {
+    margin-left: 6px;
+}
+
+#scannerStatus {
+    margin-left: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.table-wrap {
+    overflow: auto;
+}
+
+table.productos {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #ccc;
+}
+
+table.productos th,
+table.productos td {
+    padding: 6px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+/* Responsive small screens */
+@media (max-width: 700px) {
+    #scannerInput { width: 140px; }
+    table.productos { font-size: 13px; }
+}
+/* Fuerza que la barra azul (el form) acomode todo en una línea */
+#searchForm {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    /* evita que los botones salten a otra línea */
+    flex-wrap: nowrap;
+
+    /* por si hay demasiados elementos, permite scroll horizontal suave */
+    overflow-x: auto;
+
+    /* opcional si tu barra es azul desde admin.css */
+    /* background: #227bff; */
+}
+
+/* Evita que se rompan palabras en los botones y textos */
+#searchForm * {
+    white-space: nowrap;
+}
+
+/* Ajustes visuales suaves */
+#searchForm input,
+#searchForm button {
+    padding: 7px 10px;
+    border-radius: 6px;
+}
