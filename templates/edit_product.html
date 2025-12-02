@@ -3,28 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <title>Editar producto {{ producto.rowid }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/edit.css') }}">
 </head>
-<body>
-    <h1>Editar producto {{ producto.rowid }}</h1>
+</head>
+<body class="edit-page">
+    <div class="edit-container">
+        <div class="edit-header">
+            <h1>Editar producto <span class="meta-note">#{{ producto.rowid }}</span></h1>
+        </div>
 
-    <form method="post">
-        <label>SKU:<br><input name="sku" value="{{ producto.sku }}"></label><br>
-        <label>ID Original:<br><input name="id_original" value="{{ producto.id_original }}"></label><br>
-        <label>Tipo:<br><input name="tipo" value="{{ producto.tipo }}"></label><br>
-        <label>Marca:<br><input name="marca" value="{{ producto.marca }}"></label><br>
-        <label>Modelo:<br><input name="modelo" value="{{ producto.modelo }}"></label><br>
-        <label>No. Serie:<br><input name="no_serie" value="{{ producto.no_serie }}"></label><br>
-        <label>Volts:<br><input name="volts" value="{{ producto.volts }}"></label><br>
-        <label>Precio:<br><input name="precio" value="{{ producto.precio }}"></label><br>
-        <label>Estado:<br><input name="estado" value="{{ producto.estado }}"></label><br>
-        <label>Ubicación:<br><input name="ubicacion" value="{{ producto.ubicacion }}"></label><br>
-        <label>Fecha registro:<br><input name="fecha_registro" value="{{ producto.fecha_registro }}"></label><br>
-        <label>Observación:<br><textarea name="observacion">{{ producto.observacion }}</textarea></label><br>
+        <form method="post" class="edit-form">
+            <div class="form-row">
+                <div class="col">
+                    <label>SKU</label>
+                    <input name="sku" value="{{ producto.sku }}">
+                </div>
+                <div class="col">
+                    <label>ID Original</label>
+                    <input name="id_original" value="{{ producto.id_original }}">
+                </div>
+            </div>
 
-        <button type="submit">Guardar cambios</button>
-    </form>
+            <div class="form-row">
+                <div class="col">
+                    <label>Tipo</label>
+                    <input name="tipo" value="{{ producto.tipo }}">
+                </div>
+                <div class="col">
+                    <label>Marca</label>
+                    <input name="marca" value="{{ producto.marca }}">
+                </div>
+            </div>
 
-    <br>
-    <a href="{{ url_for('productos_all') }}">🔙 Volver a productos</a>
+            <div class="form-row">
+                <div class="col">
+                    <label>Modelo</label>
+                    <input name="modelo" value="{{ producto.modelo }}">
+                </div>
+                <div class="col">
+                    <label>No. Serie</label>
+                    <input name="no_serie" value="{{ producto.no_serie }}">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="col">
+                    <label>Volts</label>
+                    <input name="volts" value="{{ producto.volts }}">
+                </div>
+                <div class="col">
+                    <label>Precio</label>
+                    <input name="precio" value="{{ producto.precio }}">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="col">
+                    <label>Estado</label>
+                    <input name="estado" value="{{ producto.estado }}">
+                </div>
+                <div class="col">
+                    <label>Ubicación</label>
+                    <input name="ubicacion" value="{{ producto.ubicacion }}">
+                </div>
+            </div>
+
+            <div>
+                <label>Fecha registro</label>
+                <input name="fecha_registro" value="{{ producto.fecha_registro }}">
+            </div>
+
+            <div>
+                <label>Observación</label>
+                <textarea name="observacion">{{ producto.observacion }}</textarea>
+            </div>
+
+            <div class="btn-row">
+                <button type="submit" class="btn-primary">Guardar cambios</button>
+                <a class="link-back" href="{{ url_for('productos_all') }}">🔙 Volver a productos</a>
+            </div>
+        </form>
+    </div>
 </body>
 </html>

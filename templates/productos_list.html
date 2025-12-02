@@ -17,6 +17,7 @@
             </div>
             <div class="back-links">
                 <a href="{{ url_for('admin') }}">🏠 Panel</a>
+                <a href="{{ url_for('categorias_list') }}">📂 Categorías</a>
             </div>
         </div>
         <div class="right">
@@ -30,14 +31,10 @@
                 <input id="searchInput" type="text" name="q" placeholder="Buscar por SKU, marca o modelo" value="{{ q if q is defined else '' }}">
                 <button type="submit">🔎</button>
                 {% if prefijo is defined and prefijo %}
+                    <a href="{{ url_for('exportar_categoria_excel', prefijo=prefijo, q=q) }}" class="btn-export" style="margin-left:6px;">📥 Descargar Excel</a>
                     <a href="{{ url_for('productos_all') }}">Ver todos</a>
                 {% endif %}
-                <!-- Input para scanner (muchos scanners actúan como teclado y envían Enter) -->
-                <input id="scannerInput" type="text" placeholder="Escanea aquí">
-                <button id="focusScanner" type="button">🎯 Scan</button>
-                <!-- Simular escaneo (testing) -->
-                <input id="simulateInput" type="text" placeholder="Simular código" style="width:140px">
-                <button id="simulateBtn" type="button">Simular</button>
+                <!-- Controles del scanner del servidor (el scanner local y la simulación han sido removidos) -->
                 <!-- Controles del scanner del servidor -->
                 <button id="startServerScan" type="button">Iniciar scanner (servidor)</button>
                 <button id="stopServerScan" type="button">Detener scanner</button>
@@ -98,28 +95,7 @@
         // Base del servidor (se toma de request.host_url en Flask; sin barra final)
         const SERVER = "{{ request.host_url[:-1] }}";
 
-        // Enfocar input del scanner al presionar el botón
-        const focusBtn = document.getElementById('focusScanner');
-        if(focusBtn){
-            focusBtn.addEventListener('click', function(){
-                const s = document.getElementById('scannerInput');
-                if(s){ s.focus(); s.select(); }
-            });
-        }
-
-        // Cuando el scanner (o teclado) envía Enter en el input scanner, se busca por código exacto
-        const scanner = document.getElementById('scannerInput');
-        if(scanner){
-            scanner.addEventListener('keydown', function(e){
-                if(e.key === 'Enter'){
-                    e.preventDefault();
-                    const code = this.value.trim();
-                    if(!code) return;
-                    // Llamar al endpoint /scan que redirige a productos buscando por no_serie
-                    window.location.href = `${SERVER}/scan?code=` + encodeURIComponent(code);
-                }
-            });
-        }
+        // Nota: el input local de escaneo y la simulación fueron removidos del HTML.
 
         // ------------------ Integración con scanner del servidor ------------------
         const startBtn = document.getElementById('startServerScan');
@@ -193,25 +169,7 @@
         if(startBtn) startBtn.addEventListener('click', startServerScanner);
         if(stopBtn) stopBtn.addEventListener('click', stopServerScanner);
 
-        // Simular escaneo en productos_list
-        const simulateBtn = document.getElementById('simulateBtn');
-        const simulateInput = document.getElementById('simulateInput');
-        if(simulateBtn){
-            simulateBtn.addEventListener('click', async ()=>{
-                const code = (simulateInput && simulateInput.value || '').trim();
-                if(!code) return alert('Ingresa un código para simular');
-                try{
-                    const r = await fetch(`${SERVER}/simulate_scan`, {
-                        method:'POST',
-                        headers:{'Content-Type':'application/json'},
-                        body: JSON.stringify({code})
-                    });
-                    const j = await r.json().catch(()=>({ok:false,msg:'invalid json'}));
-                    if(r.ok && j.ok){ alert('Simulado: '+j.code); }
-                    else alert('Error: '+(j.msg||r.status));
-                }catch(e){ alert('Error: '+e.message) }
-            });
-        }
+        // Nota: la funcionalidad de simulación local fue removida del HTML.
     </script>
 </body>
 </html>

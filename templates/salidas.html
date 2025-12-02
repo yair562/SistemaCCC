@@ -31,6 +31,15 @@
             <button id="btnAbrirEvento" style="margin-left:8px; display:none;">Abrir evento</button>
             <button id="btnCerrarEvento" style="margin-left:8px; display:none;">Cerrar evento</button>
         </div>
+        <!-- Buscador para productos en venta (filtrado cliente) -->
+        <form id="searchFormVenta" style="margin:10px 0; display:flex; gap:8px; align-items:center;">
+            <input type="text" name="q" id="searchQVenta" placeholder="SKU, marca, modelo o no. serie" value="{{ q if q is defined else '' }}">
+            <select id="searchFieldVenta" name="search_field">
+                <option value="">Busca en varios campos</option>
+                <option value="no_serie">No. Serie</option>
+            </select>
+            <button type="button" id="clearSearchVenta" class="btn-secondary" style="height:34px;">Limpiar</button>
+        </form>
         {% if productos_venta %}
         <table class="productos">
             <tr>
@@ -739,6 +748,76 @@
                 params.set('panel', 'reubicar');
                 window.location.href = '/salidas?' + params.toString();
             })
+        }
+
+        // Buscador en panel Venta: filtrado en tiempo real (debounced)
+        const searchFormVenta = document.getElementById('searchFormVenta');
+        if(searchFormVenta){
+            const inputVenta = document.getElementById('searchQVenta');
+            const selectVenta = document.getElementById('searchFieldVenta');
+            const clearBtnVenta = document.getElementById('clearSearchVenta');
+
+            function debounce(fn, wait){
+                let t = null;
+                return function(...args){
+                    clearTimeout(t);
+                    t = setTimeout(()=>fn.apply(this,args), wait);
+                }
+            }
+
+            function doFilterVenta(){
+                const q = (inputVenta.value || '').trim().toLowerCase();
+                const field = (selectVenta.value || '').trim();
+                const table = document.querySelector('#panelVenta table.productos');
+                if(!table) return;
+                const rows = Array.from(table.querySelectorAll('tr'));
+                let matched = 0;
+                rows.forEach((r, idx) => {
+                    if(idx === 0) return; // header
+                    const cells = Array.from(r.querySelectorAll('td'));
+                    let hay = false;
+                    if(!q){ hay = true; }
+                    else if(field === 'no_serie'){
+                        const val = (cells[4] && cells[4].textContent) ? cells[4].textContent.toLowerCase() : '';
+                        hay = val.indexOf(q) !== -1;
+                    } else {
+                        for(let i=0;i<=4;i++){
+                            const val = (cells[i] && cells[i].textContent) ? cells[i].textContent.toLowerCase() : '';
+                            if(val.indexOf(q)!==-1){ hay = true; break; }
+                        }
+                    }
+                    if(hay){ r.style.display = ''; matched++; } else { r.style.display = 'none'; }
+                });
+                let noEl = document.getElementById('noResultsVenta');
+                if(!noEl){
+                    noEl = document.createElement('p');
+                    noEl.id = 'noResultsVenta';
+                    noEl.style.marginTop = '10px';
+                    noEl.textContent = 'Sin resultados en productos en venta.';
+                    const tableEl = document.querySelector('#panelVenta table.productos');
+                    if(tableEl) tableEl.insertAdjacentElement('afterend', noEl);
+                }
+                noEl.style.display = (matched===0 ? '' : 'none');
+            }
+
+            const debouncedFilter = debounce(doFilterVenta, 200);
+
+            // Evitar que el formulario recargue la página al presionar Enter
+            searchFormVenta.addEventListener('submit', function(e){ e.preventDefault(); doFilterVenta(); });
+
+            // Filtrar en tiempo real mientras se escribe
+            inputVenta.addEventListener('input', debouncedFilter);
+            // Cambios en el select también aplican filtro
+            selectVenta.addEventListener('change', doFilterVenta);
+
+            // Botón limpiar
+            if(clearBtnVenta){
+                clearBtnVenta.addEventListener('click', function(){
+                    inputVenta.value = '';
+                    selectVenta.value = '';
+                    doFilterVenta();
+                });
+            }
         }
 
         // Modal reubicar lógica

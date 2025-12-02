@@ -35,7 +35,7 @@
             <div>
                 <div class="form-row">
                     <label for="prefijo">Prefijo SKU (elige existente o escribe uno nuevo)</label>
-                    <div class="input-inline">
+                    <div class="input-inline" style="display:flex;gap:8px;align-items:center">
                         <input id="prefijo" name="prefijo" list="prefijos_list"
                             placeholder="Escribe o elige un prefijo"
                             value="{{ prefijo_mantener if prefijo_mantener else '' }}">
@@ -44,6 +44,7 @@
                             <option value="{{ p }}">{{ p }}</option>
                             {% endfor %}
                         </datalist>
+                        <button type="button" id="btnCatalogoSKU" title="Abrir catálogo de SKUs">📂 Catálogo SKU</button>
                     </div>
                 </div>
                 
@@ -52,10 +53,6 @@
                     <div style="display:flex; gap:8px; align-items:center">
                         <input id="sku" name="sku" type="text" readonly placeholder="Prefijo-123" value="">
                         <button id="genSku" type="button">Generar siguiente SKU</button>
-                        <select id="existingSkus" style="margin-left:8px;padding:8px;border-radius:8px">
-                            <option value="">-- SKUs existentes --</option>
-                        </select>
-                        <span id="selSkuTipo" style="margin-left:8px;color:var(--muted);font-weight:600"></span>
                     </div>
                 </div>
 
@@ -154,6 +151,30 @@
             <button type="submit">Registrar entrada</button>
         </div>
     </form>
+
+    <!-- SKU Catalog Modal -->
+    <div id="skuCatalogModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:10px; width:90%; max-width:800px; max-height:80vh; overflow:auto; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,0.3); margin: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h3 style="margin:0">Catálogo de SKUs</h3>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input id="skuCatalogFilter" placeholder="Filtrar SKU o Tipo" style="padding:8px; flex:1;">
+                    <button type="button" id="closeSkuCatalog">Cerrar</button>
+                </div>
+            </div>
+            <div style="overflow:auto; max-height:65vh;">
+                <table id="skuCatalogTable" style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">SKU</th>
+                            <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
     <!-- ... (el resto del JavaScript se mantiene igual) ... -->
 
@@ -380,6 +401,82 @@
         const focusNo = document.getElementById('focusNoSerie');
         const noSerie = document.getElementById('no_serie');
 
+        // --- Catálogo de SKUs (modal) ---
+        async function openSkuCatalog(){
+            const modal = document.getElementById('skuCatalogModal');
+            if(modal){ modal.style.display = 'flex'; }
+            // Load full SKU directory (prefixes + tipo)
+            await loadSkuCatalog('');
+        }
+
+        document.addEventListener('click', function(e){
+            if(e.target && e.target.id === 'btnCatalogoSKU') openSkuCatalog();
+        });
+
+        document.getElementById('closeSkuCatalog')?.addEventListener('click', ()=>{
+            const m = document.getElementById('skuCatalogModal'); if(m) m.style.display='none';
+        });
+
+        document.getElementById('skuCatalogFilter')?.addEventListener('input', function(){
+            const q = (this.value||'').toLowerCase();
+            document.querySelectorAll('#skuCatalogTable tbody tr').forEach(tr=>{
+                const text = tr.textContent.toLowerCase();
+                tr.style.display = text.indexOf(q) !== -1 ? '' : 'none';
+            });
+        });
+
+        // Removed prefijo loader — modal now loads full SKU directory (prefixes) automatically
+
+        async function loadSkuCatalog(pref){
+            try{
+                const r = await fetch('/entradas/skus?prefijo=' + encodeURIComponent(pref));
+                if(!r.ok) throw new Error('HTTP '+r.status);
+                const j = await r.json();
+                let items = [];
+                if(Array.isArray(j)) items = j;
+                else if(j.skus) items = j.skus;
+                else if(j.data && Array.isArray(j.data)) items = j.data;
+                else if(j.ok && j.data && Array.isArray(j.data)) items = j.data;
+
+                // Agrupar por SKU y conservar/combinar tipos, marcas y modelos
+                const map = Object.create(null);
+                (items||[]).forEach(it=>{
+                    const sku = (it.sku || it.SKU || it.code || '')+'';
+                    if(!sku) return;
+                    const tipo = (it.tipo || it.type || '')+'';
+                    const marca = (it.marca || it.brand || '')+'';
+                    const modelo = (it.modelo || it.model || '')+'';
+                    if(!map[sku]) map[sku] = { sku, tipos: new Set(), marcas: new Set(), modelos: new Set() };
+                    if(tipo) map[sku].tipos.add(tipo);
+                    if(marca) map[sku].marcas.add(marca);
+                    if(modelo) map[sku].modelos.add(modelo);
+                });
+
+                const rows = Object.values(map);
+                const tbody = document.querySelector('#skuCatalogTable tbody');
+                if(!tbody) return;
+                tbody.innerHTML = '';
+
+                // Mostrar solo una fila por SKU, con tipos combinados; solo mostramos SKU y Tipo según petición
+                rows.forEach(v=>{
+                    const tipos = Array.from(v.tipos).filter(Boolean).join(' / ');
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td style="padding:8px;border-bottom:1px solid #f1f1f1;">${v.sku}</td><td style="padding:8px;border-bottom:1px solid #f1f1f1;">${tipos}</td>`;
+                    tr.style.cursor = 'pointer';
+                    tr.addEventListener('click', async ()=>{
+                        const pref = v.sku;
+                        if(prefijoEl) prefijoEl.value = pref;
+                        try{
+                            await genNextSKU(pref);
+                        }catch(e){ /* ignore */ }
+                        const m = document.getElementById('skuCatalogModal');
+                        if(m) m.style.display='none';
+                    });
+                    tbody.appendChild(tr);
+                });
+            }catch(e){ console.warn('Error cargando catálogo SKUs', e); alert('No fue posible cargar el catálogo: '+(e.message||e)); }
+        }
+
         async function loadOptionsFor(pref){
             if(!pref) return;
             try{
@@ -423,21 +520,6 @@
                 prefijoTimer = setTimeout(async ()=>{
                     await genNextSKU(v);
                     await loadOptionsFor(v);
-                    // load existing SKUs for this prefix
-                    try{
-                        const r = await getJSON('/entradas/skus?prefijo=' + encodeURIComponent(v));
-                        if(r.ok){
-                            const sel = document.getElementById('existingSkus');
-                            sel.innerHTML = '<option value="">-- SKUs existentes --</option>';
-                            (r.data||[]).forEach(item=>{
-                                const opt = document.createElement('option');
-                                opt.value = item.sku;
-                                opt.dataset.tipo = item.tipo || '';
-                                opt.text = item.sku + ' — ' + (item.tipo || '');
-                                sel.appendChild(opt);
-                            });
-                        }
-                    }catch(e){/*ignore*/}
                 }, 300);
             });
         }
@@ -447,31 +529,6 @@
                 const v = prefijoEl.value || '';
                 if(!v){ alert('Selecciona o escribe un prefijo primero'); return; }
                 await genNextSKU(v);
-            });
-        }
-
-        // when selecting an existing sku, show tipo and fetch its details and prefill
-        const existingSkus = document.getElementById('existingSkus');
-        const selSkuTipo = document.getElementById('selSkuTipo');
-        if(existingSkus){
-            existingSkus.addEventListener('change', async function(){
-                const sku = this.value;
-                const selOpt = this.options[this.selectedIndex];
-                if(selSkuTipo) selSkuTipo.textContent = (selOpt && selOpt.dataset) ? (selOpt.dataset.tipo || '') : '';
-                if(!sku) return;
-                try{
-                    const r = await getJSON('/product_by_sku?sku=' + encodeURIComponent(sku));
-                    if(r.ok && r.data){
-                        skuEl.value = r.data.sku || sku;
-                        document.getElementById('tipo').value = r.data.tipo || '';
-                        document.getElementById('marca').value = r.data.marca || '';
-                        document.getElementById('modelo').value = r.data.modelo || '';
-                        document.getElementById('no_serie').value = r.data.no_serie || '';
-                        document.getElementById('precio').value = r.data.precio || '';
-                        document.getElementById('estado').value = r.data.estado || '';
-                        document.getElementById('ubicacion').value = r.data.ubicacion || '';
-                    }
-                }catch(e){/*ignore*/}
             });
         }
 

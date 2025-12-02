@@ -1,4 +1,5 @@
-from sre_parse import CATEGORIES
+# Nota: la importación `CATEGORIES` de `sre_parse` estaba provocando
+# DeprecationWarning. No se utiliza en la aplicación, así que la eliminamos.
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 from datetime import datetime
 import sqlite3
@@ -29,7 +30,7 @@ except Exception:
 app = Flask(__name__, static_folder='static')
 # SECRET_KEY segura desde entorno o generada aleatoriamente (no determinista)
 app.secret_key = os.environ.get('FLASK_SECRET') or secrets.token_hex(32)
-DB_PATH = r"C:\Users\ROG\Desktop\SS\SistemaCCC\inventario_consolidado.db"
+DB_PATH = r"C:\RepoSistema\SistemaCCC\inventario_consolidado.db"
 
 CATEGORIAS = {
     "ANT": "Antenas",
@@ -373,15 +374,28 @@ def entradas_options():
 @app.route('/entradas/skus')
 def entradas_skus():
     pref = request.args.get('prefijo', '').strip()
-    if not pref:
-        return jsonify({'ok': False, 'msg': 'prefijo requerido'}), 400
     try:
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
-        cur.execute("SELECT rowid, sku, tipo, marca, modelo FROM inventory WHERE sku LIKE ? ORDER BY sku LIMIT 500", (f"{pref}-%",))
+        if pref:
+            # Return SKUs for the given prefix (detailed rows)
+            cur.execute("SELECT rowid, sku, tipo, marca, modelo FROM inventory WHERE sku LIKE ? ORDER BY sku LIMIT 500", (f"{pref}-%",))
+        else:
+            # No prefijo: return a directory of SKU prefixes (part before '-') with one representative tipo per prefix.
+            # Extract prefix = part before first '-' (or whole sku if no dash).
+            cur.execute("""
+                SELECT pref, tipo FROM (
+                  SELECT CASE WHEN instr(sku,'-')>0 THEN substr(sku,1,instr(sku,'-')-1) ELSE sku END AS pref,
+                         tipo
+                  FROM inventory
+                ) GROUP BY pref ORDER BY pref LIMIT 2000
+            """)
         rows = cur.fetchall()
         conn.close()
-        data = [{'rowid': r[0], 'sku': r[1], 'tipo': r[2], 'marca': r[3], 'modelo': r[4]} for r in rows]
+        if pref:
+            data = [{'rowid': r[0], 'sku': r[1], 'tipo': r[2], 'marca': r[3], 'modelo': r[4]} for r in rows]
+        else:
+            data = [{'sku': r[0], 'tipo': r[1] if r[1] is not None else ''} for r in rows]
         return jsonify({'ok': True, 'data': data})
     except Exception as e:
         return jsonify({'ok': False, 'msg': str(e)}), 500
@@ -413,14 +427,22 @@ def entradas_next_sku():
     if not pref:
         return jsonify({'ok': False, 'msg': 'prefijo requerido'}), 400
     try:
+        # Normalize prefix: remove trailing '-' if present and compare case-insensitively
+        pref_clean = pref.rstrip('-')
+        pref_lower = pref_clean.lower()
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
-        cur.execute("SELECT MAX(CAST(substr(sku, instr(sku,'-')+1) AS INTEGER)) FROM inventory WHERE sku LIKE ?", (f"{pref}-%",))
+        # Use lower(sku) to match prefix case-insensitively and extract numeric suffix
+        cur.execute(
+            "SELECT MAX(CAST(substr(sku, instr(sku,'-')+1) AS INTEGER)) "
+            "FROM inventory WHERE lower(sku) LIKE ?",
+            (f"{pref_lower}-%",)
+        )
         r = cur.fetchone()
         conn.close()
         maxnum = r[0] if r and r[0] is not None else 0
         nextnum = int(maxnum or 0) + 1
-        next_sku = f"{pref}-{nextnum}"
+        next_sku = f"{pref_clean}-{nextnum}"
         return jsonify({'ok': True, 'next_sku': next_sku, 'next_number': nextnum})
     except Exception as e:
         return jsonify({'ok': False, 'msg': str(e)}), 500
@@ -1563,6 +1585,50 @@ def exportar_ventas_excel():
         return f"Error al exportar ventas: {str(e)}", 500
 
 
+@app.route('/exportar_categoria_excel/<prefijo>')
+def exportar_categoria_excel(prefijo):
+    """Exporta a Excel los productos cuyo SKU comienzan con el prefijo dado.
+    Soporta parámetro opcional `q` para filtrar por texto (marca, modelo, observacion, id_original).
+    """
+    q = request.args.get('q', '').strip()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        # construir query similar a productos_por_categoria
+        parametros = [f"{prefijo}-%"]
+        base_sql = ("SELECT rowid AS id, sku, id_original, tipo, marca, modelo, no_serie, volts, precio, "
+                    "estado, ubicacion, fecha_registro, origen_hoja, observacion, extras "
+                    "FROM inventory WHERE sku LIKE ?")
+        if q:
+            base_sql += " AND (sku LIKE ? OR marca LIKE ? OR modelo LIKE ? OR observacion LIKE ? OR id_original LIKE ?)"
+            like_q = f"%{q}%"
+            parametros.extend([like_q, like_q, like_q, like_q, like_q])
+
+        df = pd.read_sql_query(base_sql, conn, params=parametros)
+        conn.close()
+
+        output = io.BytesIO()
+        df.to_excel(output, engine='openpyxl', index=False, sheet_name=f'Productos_{prefijo}')
+        output.seek(0)
+
+        # Registrar en movimientos
+        try:
+            log_movimiento(session.get('usuario'), 'EXPORTAR_CATEGORIA', None, None, {
+                'archivo': f'productos_{prefijo}.xlsx', 'prefijo': prefijo, 'filtro': q, 'registros': len(df)
+            })
+        except Exception:
+            pass
+
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=f"productos_{prefijo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    except Exception as e:
+        print(f"Error al exportar categoria {prefijo}: {e}")
+        return f"Error al exportar: {str(e)}", 500
+
+
 
 @app.route("/logout")
 def logout():
@@ -2164,7 +2230,23 @@ def venta_ticket_pdf(venta_id):
             return jsonify({'ok': False, 'msg': 'Venta no encontrada'}), 404
         logo_path = os.path.join(app.static_folder, 'images', 'CCClogo.jpg')
         ticket, items = bundle
-        html = render_template('venta_ticket_pdf.html', ticket=ticket, items=items, logo_path=logo_path if os.path.exists(logo_path) else None)
+        css_path = os.path.join(app.static_folder, 'css', 'venta_ticket_pdf.css')
+        ticket_css = ''
+        if os.path.exists(css_path):
+            try:
+                with open(css_path, 'r', encoding='utf-8') as css_file:
+                    ticket_css = css_file.read()
+            except Exception:
+                ticket_css = ''
+        html = render_template(
+            'venta_ticket_pdf.html',
+            ticket=ticket,
+            items=items,
+            logo_path=logo_path if os.path.exists(logo_path) else None,
+        )
+        if ticket_css:
+            style_tag = f"<style>\n{ticket_css}\n</style>\n"
+            html = html.replace('</head>', f"{style_tag}</head>", 1)
         pdf_buffer = BytesIO()
         pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
         if pisa_status.err:
@@ -2494,3 +2576,35 @@ def ubicaciones_eliminar():
         return jsonify({'ok': True, 'msg': 'Ubicación eliminada'})
     except Exception as e:
         return jsonify({'ok': False, 'msg': str(e)}), 500
+
+
+@app.route('/ubicaciones/catalogo')
+def ubicaciones_catalogo():
+    """Devuelve el catálogo de ubicaciones en JSON. Soporta filtro por ?nivel=.
+    Respuesta: { ok: True, ubicaciones: [ {id, nombre, nivel, nota}, ... ] }
+    """
+    nivel = (request.args.get('nivel') or '').strip().upper()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("""CREATE TABLE IF NOT EXISTS ubicaciones_catalogo (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            nivel TEXT NOT NULL,
+            nota TEXT,
+            UNIQUE(nivel,nombre)
+        )""")
+        if nivel:
+            cur.execute("SELECT id, nombre, nivel, nota FROM ubicaciones_catalogo WHERE nivel=? ORDER BY nombre", (nivel,))
+        else:
+            cur.execute("SELECT id, nombre, nivel, nota FROM ubicaciones_catalogo ORDER BY nivel, nombre")
+        rows = cur.fetchall()
+        ubicaciones = [dict(r) for r in rows]
+        conn.close()
+        return jsonify({'ok': True, 'ubicaciones': ubicaciones})
+    except Exception as e:
+        try:
+            return jsonify({'ok': False, 'msg': str(e)}), 500
+        except Exception:
+            return jsonify({'ok': False, 'msg': 'Error inesperado'}), 500
