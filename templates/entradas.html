@@ -8,29 +8,49 @@
 </head>
 <body>
     <h1>Registrar Entrada</h1>
+
     {% if error %}
-    <div style="background:#ffd6d6;border:1px solid #ff9c9c;padding:10px;border-radius:6px;margin-bottom:10px;color:#800">{{ error }}</div>
+    <div style="background:#ffd6d6;border:1px solid #ff9c9c;padding:10px;border-radius:6px;margin-bottom:10px;color:#800">
+        {{ error }}
+    </div>
     {% endif %}
-    <a href="{{ url_for('admin') }}">🔙 Volver al panel</a>
+
+    <a href="{{ url_for('admin') }}" class="btn-back">🔙 Volver al panel</a>
+
+    <!-- SECCIÓN DE CONFIGURACIÓN DE CAMPOS A MANTENER -->
+    <div class="mantener-campos-header">
+        <h3>🔧 Configurar campos a mantener</h3>
+        <div class="toggle-buttons">
+            <button type="button" id="btnMantenerTodo" class="btn-toggle">✅ Mantener todo</button>
+            <button type="button" id="btnLimpiarTodo" class="btn-toggle">🔄 Limpiar todo</button>
+        </div>
+    </div>
 
     <form id="entradaForm" method="post" action="{{ url_for('entradas_register') }}">
+        <!-- Campo oculto para enviar campos mantenidos al backend -->
+        <input type="hidden" id="campos_mantenidos" name="campos_mantenidos" value="">
+        
         <div class="grid">
+            <!-- IZQUIERDA -->
             <div>
                 <div class="form-row">
                     <label for="prefijo">Prefijo SKU (elige existente o escribe uno nuevo)</label>
                     <div class="input-inline">
-                        <input id="prefijo" name="prefijo" list="prefijos_list" placeholder="Escribe o elige un prefijo" value="{{ form.get('prefijo','') if form is defined else '' }}">
+                        <input id="prefijo" name="prefijo" list="prefijos_list"
+                            placeholder="Escribe o elige un prefijo"
+                            value="{{ prefijo_mantener if prefijo_mantener else '' }}">
                         <datalist id="prefijos_list">
                             {% for p in prefixes %}
-                            <option value="{{ p }}"></option>
+                            <option value="{{ p }}">{{ p }}</option>
                             {% endfor %}
                         </datalist>
                     </div>
                 </div>
+                
                 <div class="form-row">
-                    <label for="sku">SKU (se autogenera con el consecutivo)</label>
+                    <label for="sku">SKU (se autogenera)</label>
                     <div style="display:flex; gap:8px; align-items:center">
-                        <input id="sku" name="sku" type="text" placeholder="Prefijo-123" readonly value="{{ form.get('sku','') if form is defined else '' }}">
+                        <input id="sku" name="sku" type="text" readonly placeholder="Prefijo-123" value="">
                         <button id="genSku" type="button">Generar siguiente SKU</button>
                         <select id="existingSkus" style="margin-left:8px;padding:8px;border-radius:8px">
                             <option value="">-- SKUs existentes --</option>
@@ -38,55 +58,96 @@
                         <span id="selSkuTipo" style="margin-left:8px;color:var(--muted);font-weight:600"></span>
                     </div>
                 </div>
-                <!-- ID original se gestiona internamente, no lo editamos -->
+
                 <div class="form-row">
-                    <label for="tipo">Tipo</label>
-                    <input id="tipo" name="tipo" list="tipo_list" value="{{ form.get('tipo','') if form is defined else '' }}">
+                    <label for="tipo">
+                        Tipo 
+                        <span class="toggle-field" data-field="tipo">
+                            <button type="button" class="btn-mantener btn-mantener-off" data-field="tipo">⚡ Mantener</button>
+                        </span>
+                    </label>
+                    <input id="tipo" name="tipo" list="tipo_list" value="{{ tipo_mantener if tipo_mantener else '' }}">
                     <datalist id="tipo_list"></datalist>
                 </div>
+
                 <div class="form-row">
-                    <label for="marca">Marca</label>
-                    <input id="marca" name="marca" list="marca_list" value="{{ form.get('marca','') if form is defined else '' }}">
+                    <label for="marca">
+                        Marca
+                        <span class="toggle-field" data-field="marca">
+                            <button type="button" class="btn-mantener btn-mantener-off" data-field="marca">⚡ Mantener</button>
+                        </span>
+                    </label>
+                    <input id="marca" name="marca" list="marca_list" value="{{ marca_mantener if marca_mantener else '' }}">
                     <datalist id="marca_list"></datalist>
                 </div>
+
                 <div class="form-row">
-                    <label for="modelo">Modelo</label>
-                    <input id="modelo" name="modelo" list="modelo_list" value="{{ form.get('modelo','') if form is defined else '' }}">
+                    <label for="modelo">
+                        Modelo
+                        <span class="toggle-field" data-field="modelo">
+                            <button type="button" class="btn-mantener btn-mantener-off" data-field="modelo">⚡ Mantener</button>
+                        </span>
+                    </label>
+                    <input id="modelo" name="modelo" list="modelo_list" value="{{ modelo_mantener if modelo_mantener else '' }}">
                     <datalist id="modelo_list"></datalist>
                 </div>
             </div>
+
+            <!-- DERECHA -->
             <div>
-                    <div class="form-row">
-                        <label for="no_serie">No. Serie (scanner o teclado)</label>
-                        <div style="display:flex; gap:8px; align-items:center">
-                            <input id="no_serie" name="no_serie" type="text" placeholder="Escanea o escribe el no. serie" value="{{ form.get('no_serie','') if form is defined else '' }}">
-                            <button id="focusNoSerie" type="button">🎯 Scan</button>
-                            <button id="startServerScan" type="button" style="margin-left:8px">Iniciar scanner (servidor)</button>
-                            <button id="stopServerScan" type="button" style="margin-left:6px">Detener scanner</button>
-                            <span id="scannerStatus" style="margin-left:8px; font-weight:600; color:#333">Inactivo</span>
-                        </div>
+                <div class="form-row">
+                    <label for="no_serie">No. Serie (scanner o teclado)</label>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap;">
+                        <input id="no_serie" name="no_serie" type="text" placeholder="Escanea o escribe el no. serie" value="">
+                        <button id="focusNoSerie" type="button">🎯 Scan</button>
+                        <button id="startServerScan" type="button" style="margin-left:8px">Iniciar scanner (servidor)</button>
+                        <button id="stopServerScan" type="button" style="margin-left:6px">Detener scanner</button>
+                        <span id="scannerStatus" style="margin-left:8px; font-weight:600; color:#333">Inactivo</span>
                     </div>
-                <!-- Volts se gestiona internamente, no lo editamos -->
-                <div class="form-row">
-                    <label for="precio">Precio</label>
-                    <input id="precio" name="precio" type="text" value="{{ form.get('precio','') if form is defined else '' }}">
                 </div>
+
                 <div class="form-row">
-                    <label for="estado">Estado</label>
-                    <input id="estado" name="estado" list="estado_list" value="{{ form.get('estado','') if form is defined else '' }}">
+                    <label for="precio">
+                        Precio
+                        <span class="toggle-field" data-field="precio">
+                            <button type="button" class="btn-mantener btn-mantener-off" data-field="precio">⚡ Mantener</button>
+                        </span>
+                    </label>
+                    <input id="precio" name="precio" type="text" value="{{ precio_mantener if precio_mantener else '' }}">
+                </div>
+
+                <div class="form-row">
+                    <label for="estado">
+                        Estado
+                        <span class="toggle-field" data-field="estado">
+                            <button type="button" class="btn-mantener btn-mantener-off" data-field="estado">⚡ Mantener</button>
+                        </span>
+                    </label>
+                    <input id="estado" name="estado" list="estado_list" value="{{ estado_mantener if estado_mantener else '' }}">
                     <datalist id="estado_list"></datalist>
                 </div>
+
                 <div class="form-row">
-                    <label for="ubicacion">Ubicación</label>
-                    <input id="ubicacion" name="ubicacion" list="ubicacion_list" value="{{ form.get('ubicacion','') if form is defined else '' }}">
+                    <label for="ubicacion">
+                        Ubicación
+                        <span class="toggle-field" data-field="ubicacion">
+                            <button type="button" class="btn-mantener btn-mantener-off" data-field="ubicacion">⚡ Mantener</button>
+                        </span>
+                    </label>
+                    <input id="ubicacion" name="ubicacion" list="ubicacion_list" value="{{ ubicacion_mantener if ubicacion_mantener else '' }}">
                     <datalist id="ubicacion_list"></datalist>
                 </div>
             </div>
         </div>
 
         <div class="form-row">
-            <label for="observacion">Observación</label>
-            <textarea id="observacion" name="observacion" rows="3">{{ form.get('observacion','') if form is defined else '' }}</textarea>
+            <label for="observacion">
+                Observación
+                <span class="toggle-field" data-field="observacion">
+                    <button type="button" class="btn-mantener btn-mantener-off" data-field="observacion">⚡ Mantener</button>
+                </span>
+            </label>
+            <textarea id="observacion" name="observacion" rows="3">{{ observacion_mantener if observacion_mantener else '' }}</textarea>
         </div>
 
         <div class="actions">
@@ -94,7 +155,218 @@
         </div>
     </form>
 
+    <!-- ... (el resto del JavaScript se mantiene igual) ... -->
+
+    <!-- ========================================================= -->
+    <!-- ======================   SCRIPTS   ======================= -->
+    <!-- ========================================================= -->
     <script>
+        // ============================================================
+        // ========== SISTEMA DE MANTENER CAMPOS MEJORADO ==========
+        // ============================================================
+
+        class MantenerCampos {
+    constructor() {
+        this.camposAMantener = new Set();
+        this.valoresMantenidos = {}; // NUEVO: Guarda los valores de los campos
+        this.init();
+    }
+
+    init() {
+        this.cargarEstado();
+        this.configurarEventListeners();
+        this.actualizarEstilos();
+        this.aplicarValoresMantenidos(); // NUEVO: Aplicar valores guardados
+        
+        console.log('🔧 Sistema de mantener campos iniciado. Campos activos:', Array.from(this.camposAMantener));
+        console.log('📋 Valores mantenidos:', this.valoresMantenidos);
+    }
+
+    configurarEventListeners() {
+        document.querySelectorAll('.btn-mantener').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const campo = e.target.dataset.field;
+                this.toggleCampo(campo);
+            });
+        });
+
+        document.getElementById('btnMantenerTodo')?.addEventListener('click', () => {
+            this.mantenerTodos();
+        });
+
+        document.getElementById('btnLimpiarTodo')?.addEventListener('click', () => {
+            this.limpiarTodos();
+        });
+
+        // NUEVO: Guardar valores cuando cambien los inputs
+        document.querySelectorAll('input, textarea').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const campo = e.target.id;
+                if (this.camposAMantener.has(campo)) {
+                    this.guardarValorCampo(campo, e.target.value);
+                }
+            });
+
+            input.addEventListener('change', (e) => {
+                const campo = e.target.id;
+                if (this.camposAMantener.has(campo)) {
+                    this.guardarValorCampo(campo, e.target.value);
+                }
+            });
+        });
+    }
+
+    // NUEVO: Guardar valor de un campo específico
+    guardarValorCampo(campo, valor) {
+        this.valoresMantenidos[campo] = valor;
+        this.guardarEstado();
+        console.log(`💾 Guardado valor para ${campo}:`, valor);
+    }
+
+    toggleCampo(campo) {
+        if (this.camposAMantener.has(campo)) {
+            this.camposAMantener.delete(campo);
+            // Eliminar el valor guardado cuando se deja de mantener
+            delete this.valoresMantenidos[campo];
+            console.log(`❌ Dejando de mantener: ${campo}`);
+        } else {
+            this.camposAMantener.add(campo);
+            // Guardar el valor actual cuando se activa mantener
+            const input = document.getElementById(campo);
+            if (input && input.value) {
+                this.valoresMantenidos[campo] = input.value;
+            }
+            console.log(`✅ Manteniendo campo: ${campo}`);
+        }
+        this.actualizarEstilos();
+        this.guardarEstado();
+    }
+
+    mantenerTodos() {
+        const campos = ['tipo', 'marca', 'modelo', 'precio', 'estado', 'ubicacion', 'observacion'];
+        campos.forEach(campo => {
+            this.camposAMantener.add(campo);
+            // Guardar valores actuales cuando se activa "mantener todo"
+            const input = document.getElementById(campo);
+            if (input && input.value) {
+                this.valoresMantenidos[campo] = input.value;
+            }
+        });
+        console.log('✅ Activado: Mantener todos los campos');
+        this.actualizarEstilos();
+        this.guardarEstado();
+    }
+
+    limpiarTodos() {
+        this.camposAMantener.clear();
+        this.valoresMantenidos = {};
+        console.log('🔄 Desactivado: Limpiar todos los campos');
+        this.actualizarEstilos();
+        this.guardarEstado();
+    }
+
+    actualizarEstilos() {
+        document.querySelectorAll('.btn-mantener').forEach(btn => {
+            const campo = btn.dataset.field;
+            if (this.camposAMantener.has(campo)) {
+                btn.classList.remove('btn-mantener-off');
+                btn.classList.add('btn-mantener-on');
+                btn.textContent = '✅ Manteniendo';
+            } else {
+                btn.classList.remove('btn-mantener-on');
+                btn.classList.add('btn-mantener-off');
+                btn.textContent = '⚡ Mantener';
+            }
+        });
+
+        document.querySelectorAll('input, textarea').forEach(input => {
+            const campo = input.id;
+            if (this.camposAMantener.has(campo)) {
+                input.classList.add('campo-mantenido');
+            } else {
+                input.classList.remove('campo-mantenido');
+            }
+        });
+    }
+
+    // NUEVO: Aplicar valores guardados a los campos
+    aplicarValoresMantenidos() {
+        Object.keys(this.valoresMantenidos).forEach(campo => {
+            const input = document.getElementById(campo);
+            if (input && this.valoresMantenidos[campo]) {
+                input.value = this.valoresMantenidos[campo];
+                console.log(`🔄 Aplicando valor mantenido para ${campo}:`, this.valoresMantenidos[campo]);
+            }
+        });
+    }
+
+    guardarEstado() {
+        const estado = {
+            campos: Array.from(this.camposAMantener),
+            valores: this.valoresMantenidos
+        };
+        localStorage.setItem('mantenerCampos', JSON.stringify(estado));
+    }
+
+    cargarEstado() {
+        try {
+            const guardado = localStorage.getItem('mantenerCampos');
+            if (guardado) {
+                const estado = JSON.parse(guardado);
+                this.camposAMantener = new Set(estado.campos || []);
+                this.valoresMantenidos = estado.valores || {};
+                console.log('📂 Estado cargado desde localStorage:', estado);
+            } else {
+                console.log('📂 No hay estado guardado en localStorage');
+            }
+        } catch (e) {
+            console.log('❌ No se pudo cargar estado guardado:', e);
+        }
+    }
+
+    resetearFormulario() {
+        // SOLO limpiar campos que NO están marcados para mantener
+        const campos = ['tipo', 'marca', 'modelo', 'precio', 'estado', 'ubicacion', 'observacion'];
+        
+        campos.forEach(campo => {
+            if (!this.camposAMantener.has(campo)) {
+                const input = document.getElementById(campo);
+                if (input) {
+                    input.value = '';
+                }
+            }
+        });
+
+        // Siempre limpiar el número de serie
+        const noSerieInput = document.getElementById('no_serie');
+        if (noSerieInput) {
+            noSerieInput.value = '';
+        }
+
+        console.log('🔄 Formulario reseteado. Campos mantenidos:', Array.from(this.camposAMantener));
+    }
+
+    limpiarTodosLosCampos() {
+        // SOLO limpiar campos que NO están marcados para mantener
+        const camposALimpiar = ['tipo', 'marca', 'modelo', 'no_serie', 'precio', 'estado', 'ubicacion', 'observacion'];
+        
+        camposALimpiar.forEach(campo => {
+            if (!this.camposAMantener.has(campo) || campo === 'no_serie') {
+                const input = document.getElementById(campo);
+                if (input) {
+                    input.value = '';
+                }
+            }
+        });
+    }
+}
+
+        let mantenerCamposSystem;
+
+        // ============================================================
+        // ========== FUNCIONES DEL FORMULARIO Y ESCÁNER ==========
+        // ============================================================
+
         // Helper to fetch JSON
         async function getJSON(url){
             const r = await fetch(url);
@@ -207,6 +479,10 @@
             focusNo.addEventListener('click', ()=>{ noSerie.focus(); noSerie.select(); });
         }
 
+        // ============================================================
+        // ========== SISTEMA DE ESCÁNER DEL SERVIDOR ==========
+        // ============================================================
+
         // Server scanner integration: poll /last_scanned and set no_serie
         let serverScanActive = false; // indicates whether we expect server scanning
         let pollInterval = null;
@@ -284,6 +560,35 @@
         if(startBtn) startBtn.addEventListener('click', startServerScanner);
         if(stopBtn) stopBtn.addEventListener('click', stopServerScanner);
 
+// ============================================================
+// ========== INICIALIZACIÓN ==========
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    mantenerCamposSystem = new MantenerCampos();
+    
+    // Configurar valores desde el backend (solo el prefijo se mantiene automáticamente)
+    const prefijoMantener = "{{ prefijo_mantener }}";
+    if (prefijoMantener && prefijoMantener.trim() !== '') {
+        console.log("🔄 Configurando formulario con prefijo del backend:", prefijoMantener);
+        
+        setTimeout(async () => {
+            await genNextSKU(prefijoMantener);
+            await loadOptionsFor(prefijoMantener);
+            document.getElementById('no_serie').focus();
+            console.log("✅ Formulario listo para siguiente producto");
+        }, 300);
+    }
+    
+    // Configurar el envío del formulario para incluir campos mantenidos
+    document.getElementById('entradaForm').addEventListener('submit', function() {
+        const camposMantenidos = Array.from(mantenerCamposSystem.camposAMantener);
+        document.getElementById('campos_mantenidos').value = camposMantenidos.join(',');
+        console.log('📤 Enviando campos mantenidos al backend:', camposMantenidos);
+    });
+});
+
     </script>
+
 </body>
 </html>

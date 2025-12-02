@@ -12,31 +12,106 @@
         </div>
         <div class="right">
             <a class="back" href="{{ url_for('admin') }}">🔙 Panel</a>
+            <a class="back" href="{{ url_for('venta_evento_page') }}" title="Abrir/gestionar evento de venta">🛍️ Venta del Día</a>
         </div>
     </div>
 
     <div class="tabs">
-        <button id="tabVenta">Venta (marcar VENDIDO)</button>
+        <button id="tabVenta">Venta (Registrar Venta)</button>
         <button id="tabSalida">Salida (Donar / Basura)</button>
+        <button id="tabReubicar">Cambiar de Ubicación</button>
     </div>
 
     <div id="panelVenta" class="panel">
         <h2>Productos en venta</h2>
+        <div id="ventaHoySummary" style="margin:8px 0; padding:8px; background:#f8fafc; border:1px solid #e5e7eb; border-radius:6px;">
+            <strong>Evento de hoy:</strong> <span id="evtEstado">—</span> | Total vendido: $<span id="evtTotal">0</span>
+            <span id="evtBadge" class="badge badge-off" style="margin-left:8px;">Sin evento</span>
+            <span style="margin-left:8px; color:#475569;">Cierre automático a las 00:00</span>
+            <button id="btnAbrirEvento" style="margin-left:8px; display:none;">Abrir evento</button>
+            <button id="btnCerrarEvento" style="margin-left:8px; display:none;">Cerrar evento</button>
+        </div>
         {% if productos_venta %}
         <table class="productos">
-            <tr><th>SKU</th><th>Marca</th><th>Modelo</th><th>Precio</th><th>Acción</th></tr>
+            <tr>
+                <th>SKU</th>
+                <th>Tipo</th>  <!-- NUEVA COLUMNA AGREGADA -->
+                <th>Marca</th>
+                <th>Modelo</th>
+                <th>No. Serie</th>
+                <th>Precio</th>
+                <th>Acción</th>
+            </tr>
             {% for p in productos_venta %}
             <tr>
                 <td>{{ p[1] }}</td>
+                <td>{{ p[3] }}</td>  <!-- COLUMNA TIPO -->
                 <td>{{ p[4] }}</td>
                 <td>{{ p[5] }}</td>
-                <td>{{ p[8] }}</td>
-                <td><button class="markSold" data-rowid="{{ p[0] }}">Marcar VENDIDO</button></td>
+                <td>{{ p[6] }}</td>
+                <td>${{ p[8] }}</td>
+                <td>
+                    <button class="addToCart"
+                            data-rowid="{{ p[0] }}"
+                            data-sku="{{ p[1] }}"
+                            data-tipo="{{ p[3] }}"
+                            data-marca="{{ p[4] }}"
+                            data-modelo="{{ p[5] }}"
+                            data-precio="{{ p[8] }}">Agregar al carrito</button>
+                    <button class="registrarVenta" 
+                            data-rowid="{{ p[0] }}" 
+                            data-sku="{{ p[1] }}"
+                            data-precio="{{ p[8] }}"
+                            data-modelo="{{ p[5] }}"
+                            data-marca="{{ p[4] }}"
+                            data-tipo="{{ p[3] }}">
+                        Venta rápida
+                    </button>
+                </td>
             </tr>
             {% endfor %}
         </table>
+        <!-- Carrito de ventas (burbuja desplegable) -->
+        <button id="cartBubble" class="cart-bubble hidden" title="Ver carrito">🛒 <span id="cartCount">0</span></button>
+        <div id="carritoBox" class="cart-box hidden" aria-live="polite">
+            <div class="cart-header">
+                <h3>Carrito de ventas</h3>
+                <button id="cartClose" class="btn-secondary" type="button">Cerrar</button>
+            </div>
+            <table class="productos" id="tablaCarrito">
+                <thead>
+                    <tr>
+                        <th>SKU</th>
+                        <th>Tipo</th>
+                        <th>Precio</th>
+                        <th>Quitar</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" style="text-align:right; font-weight:700;">Total</td>
+                        <td id="carritoTotal" style="font-weight:700;">$0.00</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div class="cart-actions">
+                <div class="form-group">
+                    <label for="carritoComprador">Comprador *</label>
+                    <input type="text" id="carritoComprador" placeholder="Nombre del comprador">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label for="carritoObs">Observaciones</label>
+                    <input type="text" id="carritoObs" placeholder="Opcional">
+                </div>
+                <button id="btnConfirmarCarrito">Confirmar venta del carrito</button>
+                <button id="btnVaciarCarrito" type="button" class="btn-secondary">Vaciar</button>
+            </div>
+        </div>
         {% else %}
             <p>No hay productos en estado <strong>VENTA</strong> con precio.</p>
+            <p><a href="{{ url_for('venta') }}">Ir a módulo de Ventas para poner productos en VENTA</a></p>
         {% endif %}
     </div>
 
@@ -49,18 +124,23 @@
                 <option value="no_serie">No. Serie</option>
             </select>
             <button type="submit">Buscar</button>
-                <!-- Simular escaneo localmente -->
-                <input id="simulateInput" type="text" placeholder="Simular código">
-                <button id="simulateBtn" type="button">Simular</button>
         </form>
 
         <div id="searchResults">
         {% if search_results %}
             <table class="productos">
-                <tr><th>SKU</th><th>Marca</th><th>Modelo</th><th>Estado</th><th>Acciones</th></tr>
+                <tr>
+                    <th>SKU</th>
+                    <th>Tipo</th>  <!-- NUEVA COLUMNA AGREGADA -->
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
                 {% for s in search_results %}
                 <tr>
                     <td>{{ s[1] }}</td>
+                    <td>{{ s[3] }}</td>  <!-- COLUMNA TIPO -->
                     <td>{{ s[4] }}</td>
                     <td>{{ s[5] }}</td>
                     <td>{{ s[9] }}</td>
@@ -77,27 +157,204 @@
         </div>
     </div>
 
+    <div id="panelReubicar" class="panel hidden">
+        <h2>Reubicar producto</h2>
+        <p>Escanea o busca el producto y selecciona la nueva ubicación del catálogo.</p>
+        <button id="toggleCrudUbicaciones" type="button" style="margin-bottom:12px;">Administrar Catálogo de Ubicaciones</button>
+        <form id="searchFormReubicar">
+            <input type="text" name="q" id="searchQReu" placeholder="SKU, marca, modelo o no. serie" value="{{ q if q is defined else '' }}">
+            <select id="searchFieldReu" name="search_field">
+                <option value="">Busca en varios campos</option>
+                <option value="no_serie">No. Serie</option>
+            </select>
+            <button type="submit">Buscar</button>
+        </form>
+        <div id="searchResultsReubicar">
+        {% if search_results %}
+            <table class="productos">
+                <tr>
+                    <th>SKU</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>Ubicación actual</th>
+                    <th>Acción</th>
+                </tr>
+                {% for s in search_results %}
+                <tr>
+                    <td>{{ s[1] }}</td>
+                    <td>{{ s[4] }}</td>
+                    <td>{{ s[5] }}</td>
+                    <td>{{ s[10] }}</td>
+                    <td>
+                        <button class="btnReubicar" data-rowid="{{ s[0] }}" data-sku="{{ s[1] }}" data-ubicacion="{{ s[10] }}">Reubicar</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>Sin resultados. Busca el producto para reubicar.</p>
+        {% endif %}
+        </div>
+
+        <!-- CRUD Ubicaciones (oculto inicialmente) -->
+        <div id="crudUbicaciones" class="hidden" style="margin-top:24px; border:1px solid #ccc; padding:12px; border-radius:8px; background:#f9fafb;">
+            <h3>Catálogo de Ubicaciones</h3>
+            <form id="formAgregarUbicacion" style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-bottom:16px;">
+                <div>
+                    <label>Nombre*</label><br>
+                    <input type="text" name="nombre" id="catNombre" required>
+                </div>
+                <div>
+                    <label>Nivel*</label><br>
+                    <select name="nivel" id="catNivel" required>
+                        <option value="PREESCOLAR">PREESCOLAR</option>
+                        <option value="PRIMARIA">PRIMARIA</option>
+                        <option value="SECUNDARIA">SECUNDARIA</option>
+                        <option value="PREPARATORIA">PREPARATORIA</option>
+                    </select>
+                </div>
+                <div style="flex:1; min-width:160px;">
+                    <label>Nota</label><br>
+                    <input type="text" name="nota" id="catNota">
+                </div>
+                <button type="submit" style="height:38px;">Agregar</button>
+            </form>
+            <div style="margin-bottom:10px;">
+                <label>Filtrar por nivel:</label>
+                <select id="filtroNivelUbic">
+                    <option value="">Todos</option>
+                    <option value="PREESCOLAR">PREESCOLAR</option>
+                    <option value="PRIMARIA">PRIMARIA</option>
+                    <option value="SECUNDARIA">SECUNDARIA</option>
+                    <option value="PREPARATORIA">PREPARATORIA</option>
+                </select>
+                <button type="button" id="refrescarUbicaciones">Refrescar</button>
+            </div>
+            <table class="productos" id="tablaUbicaciones">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Nivel</th>
+                        <th>Nota</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Reubicar -->
+    <div id="modalReubicar" class="modal hidden">
+        <div class="modal-content">
+            <span class="closeReu">&times;</span>
+            <h3>Reubicar Producto</h3>
+            <form id="formReubicar">
+                <input type="hidden" id="reuRowid" name="rowid">
+                <div class="form-group">
+                    <label>Producto:</label>
+                    <span id="reuProducto"></span>
+                </div>
+                <div class="form-group">
+                    <label>Ubicación actual:</label>
+                    <span id="reuUbicacionActual"></span>
+                </div>
+                <div class="form-group">
+                    <label for="reuUbicacionNueva">Nueva ubicación*:</label>
+                    <select id="reuUbicacionNueva" name="ubicacion" required></select>
+                </div>
+                <button type="submit">Confirmar Reubicación</button>
+                <button type="button" id="cancelarReu" style="background:#6c757d; margin-left:10px;">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para registrar venta -->
+    <div id="modalVenta" class="modal hidden">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Registrar Venta</h3>
+            <form id="formVenta">
+                <input type="hidden" id="ventaRowid" name="rowid">
+                <div class="form-group">
+                    <label>Producto:</label>
+                    <span id="ventaProducto"></span>
+                </div>
+                <div class="form-group">
+                    <label>Tipo:</label>
+                    <span id="ventaTipo"></span>  <!-- NUEVO CAMPO EN MODAL -->
+                </div>
+                <div class="form-group">
+                    <label>Precio actual:</label>
+                    <span id="ventaPrecio"></span>
+                </div>
+                <div class="form-group">
+                    <label for="ventaComprador">Comprador *:</label>
+                    <input type="text" id="ventaComprador" name="comprador" required placeholder="Nombre del comprador o 'Personal interno'">
+                </div>
+                <div class="form-group">
+                    <label for="ventaPrecioFinal">Precio de Venta *:</label>
+                    <input type="number" id="ventaPrecioFinal" name="precio_venta" step="0.01" required placeholder="Precio final de venta">
+                </div>
+                <div class="form-group">
+                    <label for="ventaObservaciones">Observaciones:</label>
+                    <textarea id="ventaObservaciones" name="observaciones" placeholder="Observaciones opcionales (ej: departamento, proyecto, etc.)"></textarea>
+                </div>
+                <button type="submit">Confirmar Venta</button>
+                <button type="button" id="cancelarVenta" style="background: #6c757d; margin-left: 10px;">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
     <div id="msg"></div>
+
     <script>
         // Tab switching
         const tabVenta = document.getElementById('tabVenta');
         const tabSalida = document.getElementById('tabSalida');
         const panelVenta = document.getElementById('panelVenta');
         const panelSalida = document.getElementById('panelSalida');
+        const tabReubicar = document.getElementById('tabReubicar');
+        const panelReubicar = document.getElementById('panelReubicar');
         const msg = document.getElementById('msg');
+        const carritoBox = document.getElementById('carritoBox');
+        const cartBubble = document.getElementById('cartBubble');
+        const cartCountEl = document.getElementById('cartCount');
+        const cartClose = document.getElementById('cartClose');
+        const carritoTablaBody = document.querySelector('#tablaCarrito tbody');
+        const carritoTotalEl = document.getElementById('carritoTotal');
+        const carritoComprador = document.getElementById('carritoComprador');
+        const carritoObs = document.getElementById('carritoObs');
+        const btnConfirmarCarrito = document.getElementById('btnConfirmarCarrito');
+        const btnVaciarCarrito = document.getElementById('btnVaciarCarrito');
+        const cart = new Map(); // key: rowid, value: {rowid, sku, desc, precio}
 
+        function resetTabs(){
+            [tabVenta, tabSalida, tabReubicar].forEach(b=>b.classList.remove('active'));
+            [panelVenta, panelSalida, panelReubicar].forEach(p=>p.classList.add('hidden'));
+        }
         function showVenta(){
-            tabVenta.classList.add('active'); tabSalida.classList.remove('active');
-            panelVenta.classList.remove('hidden'); panelSalida.classList.add('hidden');
+            resetTabs();
+            tabVenta.classList.add('active');
+            panelVenta.classList.remove('hidden');
         }
         function showSalida(){
-            tabSalida.classList.add('active'); tabVenta.classList.remove('active');
-            panelSalida.classList.remove('hidden'); panelVenta.classList.add('hidden');
+            resetTabs();
+            tabSalida.classList.add('active');
+            panelSalida.classList.remove('hidden');
         }
+        function showReubicar(){
+            resetTabs();
+            tabReubicar.classList.add('active');
+            panelReubicar.classList.remove('hidden');
+        }
+
         tabVenta.addEventListener('click', showVenta);
         tabSalida.addEventListener('click', showSalida);
+        tabReubicar.addEventListener('click', showReubicar);
 
-        // Inicializar pestaña según si hay búsqueda (q) — si el usuario llegó con q, mostrar Salida
+        // Inicializar pestaña según si hay búsqueda (q)
         const initialQ = document.body.getAttribute('data-q') || '';
         if(initialQ && initialQ.length > 0){
             showSalida();
@@ -105,29 +362,350 @@
             showVenta();
         }
 
-        // marcar vendido
-        document.querySelectorAll('.markSold').forEach(b => {
-            b.addEventListener('click', async function(){
-                const rowid = this.dataset.rowid;
-                if(!confirm('Marcar este producto como VENDIDO?')) return;
+        // Resumen y control de evento del día
+        let evtFechaHoy = null;
+        async function cargarEventoHoy(){
+            const estadoEl = document.getElementById('evtEstado');
+            const totalEl = document.getElementById('evtTotal');
+            const abrirBtn = document.getElementById('btnAbrirEvento');
+            const cerrarBtn = document.getElementById('btnCerrarEvento');
+            const badge = document.getElementById('evtBadge');
+            try{
+                const r = await fetch('/venta/evento/hoy');
+                const j = await r.json();
+                if(!r.ok){ throw new Error(j.msg || ('HTTP '+r.status)); }
+                totalEl.textContent = (j.total_vendido||0).toFixed(2);
+                if(!j.evento){
+                    estadoEl.textContent = 'SIN EVENTO';
+                    abrirBtn.style.display = 'inline-block';
+                    abrirBtn.textContent = 'Abrir evento';
+                    cerrarBtn.style.display = 'none';
+                    if(badge){ badge.textContent='Sin evento'; badge.classList.add('badge-off'); badge.classList.remove('badge-on'); }
+                    evtFechaHoy = null;
+                } else {
+                    estadoEl.textContent = j.evento.estado + ' (' + j.evento.fecha + ')';
+                    abrirBtn.style.display = (j.evento.estado === 'OPEN') ? 'none' : 'inline-block';
+                    abrirBtn.textContent = (j.evento.estado === 'OPEN') ? 'Abrir evento' : 'Reabrir evento';
+                    cerrarBtn.style.display = (j.evento.estado === 'OPEN') ? 'inline-block' : 'none';
+                    if(badge){ badge.textContent = (j.evento.estado === 'OPEN') ? 'Evento activo' : 'Evento cerrado'; badge.classList.toggle('badge-on', j.evento.estado==='OPEN'); badge.classList.toggle('badge-off', j.evento.estado!=='OPEN'); }
+                    evtFechaHoy = j.evento.fecha;
+                }
+            }catch(e){
+                // Fallback: si falla la consulta, mostrar opción para abrir evento
+                if(estadoEl) estadoEl.textContent = 'SIN EVENTO';
+                if(totalEl) totalEl.textContent = (0).toFixed(2);
+                if(abrirBtn){ abrirBtn.style.display = 'inline-block'; abrirBtn.textContent = 'Abrir evento'; }
+                if(cerrarBtn) cerrarBtn.style.display = 'none';
+                if(badge){ badge.textContent='Sin evento'; badge.classList.add('badge-off'); badge.classList.remove('badge-on'); }
+                evtFechaHoy = null;
+            }
+        }
+        cargarEventoHoy();
+
+        const btnAbrirEvento = document.getElementById('btnAbrirEvento');
+        if(btnAbrirEvento){
+            btnAbrirEvento.addEventListener('click', async function(){
+                if(!confirm('¿Abrir la venta del día?')) return;
                 try{
-                    const r = await fetch('/salidas/mark_sold', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rowid})});
-                    const j = await r.json();
-                    if(r.ok && j.ok){ msg.textContent = j.msg; this.disabled = true; setTimeout(()=>location.reload(),700); }
-                    else { msg.textContent = j.msg || 'Error'; }
-                }catch(e){ msg.textContent = e.message }
+                    const r = await fetch('/venta/evento/abrir', {method:'POST'});
+                    const j = await r.json().catch(()=>({ok:false}));
+                    if(!r.ok){ throw new Error(j.msg || ('HTTP '+r.status)); }
+                    msg.textContent = j.msg || 'Evento abierto'; msg.style.color='green';
+                    await cargarEventoHoy();
+                }catch(err){ msg.textContent = err.message; msg.style.color='red'; }
             })
-        })
+        }
+
+        const btnCerrarEvento = document.getElementById('btnCerrarEvento');
+        if(btnCerrarEvento){
+            btnCerrarEvento.addEventListener('click', async function(){
+                if(!confirm('¿Cerrar el evento de hoy?')) return;
+                try{
+                    const r = await fetch('/venta/evento/cerrar', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({fecha: evtFechaHoy})});
+                    const j = await r.json();
+                    if(r.ok && j.ok){ msg.textContent=j.msg; msg.style.color='green'; cargarEventoHoy(); }
+                    else { msg.textContent=j.msg||'Error'; msg.style.color='red'; }
+                }catch(err){ msg.textContent=err.message; msg.style.color='red'; }
+            })
+        }
+
+        // Modal para registrar venta
+        const modalVenta = document.getElementById('modalVenta');
+        const closeModal = document.querySelector('.close');
+        const cancelarVenta = document.getElementById('cancelarVenta');
+        const formVenta = document.getElementById('formVenta');
+
+        document.querySelectorAll('.registrarVenta').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const rowid = this.dataset.rowid;
+                const sku = this.dataset.sku;
+                const precio = this.dataset.precio;
+                const modelo = this.dataset.modelo;
+                const marca = this.dataset.marca;
+                const tipo = this.dataset.tipo;  // NUEVO DATO
+                
+                document.getElementById('ventaRowid').value = rowid;
+                document.getElementById('ventaProducto').textContent = `${sku} - ${marca} ${modelo}`;
+                document.getElementById('ventaTipo').textContent = tipo || 'No especificado';  // NUEVO CAMPO
+                document.getElementById('ventaPrecio').textContent = `$${precio}`;
+                document.getElementById('ventaPrecioFinal').value = precio;
+                
+                modalVenta.classList.remove('hidden');
+            });
+        });
+
+        closeModal.addEventListener('click', function() {
+            modalVenta.classList.add('hidden');
+        });
+
+        cancelarVenta.addEventListener('click', function() {
+            modalVenta.classList.add('hidden');
+        });
+
+        window.addEventListener('click', function(event) {
+            if (event.target === modalVenta) {
+                modalVenta.classList.add('hidden');
+            }
+        });
+
+        // Enviar formulario de venta
+        formVenta.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                rowid: formData.get('rowid'),
+                comprador: formData.get('comprador'),
+                precio_venta: formData.get('precio_venta'),
+                observaciones: formData.get('observaciones'),
+                fecha_evento: typeof evtFechaHoy === 'string' ? evtFechaHoy : undefined
+            };
+            
+            // Validación básica
+            if (!data.comprador || !data.precio_venta) {
+                msg.textContent = 'Comprador y precio de venta son obligatorios';
+                msg.style.color = 'red';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/salidas/registrar_venta', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.ok) {
+                    msg.textContent = result.msg;
+                    msg.style.color = 'green';
+                    modalVenta.classList.add('hidden');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    msg.textContent = result.msg;
+                    msg.style.color = 'red';
+                }
+            } catch (error) {
+                msg.textContent = 'Error: ' + error.message;
+                msg.style.color = 'red';
+            }
+        });
+
+        // --- Carrito: agregar, renderizar y confirmar ---
+        function sanitizeField(value){
+            if(value === undefined || value === null) return '';
+            const txt = String(value).trim();
+            return (!txt || txt.toLowerCase() === 'none') ? '' : txt;
+        }
+
+        function recalcularCarritoTotal(){
+            let total = 0;
+            cart.forEach(item => { total += parseFloat(item.precio || 0); });
+            carritoTotalEl.textContent = '$' + total.toFixed(2);
+        }
+
+        function renderCarrito(){
+            carritoTablaBody.innerHTML = '';
+            for(const [rowid, item] of cart.entries()){
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.sku}</td>
+                    <td>${item.tipo || '-'}</td>
+                    <td>
+                        <input type="number" min="0" step="0.01" value="${Number(item.precio).toFixed(2)}" data-rowid="${rowid}" class="cartPrecio" style="width:110px;">
+                    </td>
+                    <td><button class="cartRemove" data-rowid="${rowid}">Quitar</button></td>
+                `;
+                carritoTablaBody.appendChild(tr);
+            }
+            recalcularCarritoTotal();
+            const hasItems = cart.size > 0;
+            // mostrar burbuja con contador
+            if(cartBubble && cartCountEl){
+                cartBubble.classList.toggle('hidden', !hasItems);
+                cartCountEl.textContent = String(cart.size);
+            }
+            // si está abierto, mantener visible; si no, solo la burbuja
+            if(!hasItems){ carritoBox.classList.add('hidden'); }
+        }
+
+        document.querySelectorAll('.addToCart').forEach(btn => {
+            btn.addEventListener('click', function(){
+                const rowid = String(this.dataset.rowid);
+                if(cart.has(rowid)){
+                    msg.textContent = 'Ya está en el carrito'; msg.style.color = '#6b7280'; return;
+                }
+                const sku = sanitizeField(this.dataset.sku);
+                const tipo = sanitizeField(this.dataset.tipo);
+                const marca = sanitizeField(this.dataset.marca);
+                const modelo = sanitizeField(this.dataset.modelo);
+                const precio = parseFloat(this.dataset.precio||0) || 0;
+                cart.set(rowid, {rowid, sku, tipo, marca, modelo, precio});
+                renderCarrito();
+            })
+        });
+
+        if(carritoTablaBody){
+            carritoTablaBody.addEventListener('input', function(e){
+                const inp = e.target.closest('.cartPrecio');
+                if(inp){
+                    const rid = String(inp.dataset.rowid);
+                    const val = parseFloat(inp.value||0);
+                    if(cart.has(rid)){
+                        const it = cart.get(rid);
+                        it.precio = isNaN(val) ? 0 : val;
+                        cart.set(rid, it);
+                        recalcularCarritoTotal();
+                    }
+                }
+            });
+            carritoTablaBody.addEventListener('click', function(e){
+                const rm = e.target.closest('.cartRemove');
+                if(rm){
+                    const rid = String(rm.dataset.rowid);
+                    cart.delete(rid);
+                    renderCarrito();
+                }
+            })
+        }
+
+        if(btnVaciarCarrito){ btnVaciarCarrito.addEventListener('click', ()=>{ cart.clear(); renderCarrito(); }); }
+
+        if(btnConfirmarCarrito){
+            btnConfirmarCarrito.addEventListener('click', async ()=>{
+                const comprador = (carritoComprador?.value||'').trim();
+                const observaciones = (carritoObs?.value||'').trim();
+                if(cart.size === 0){ msg.textContent='El carrito está vacío'; msg.style.color='red'; return; }
+                if(!comprador){ msg.textContent='Comprador es obligatorio'; msg.style.color='red'; return; }
+                if(!evtFechaHoy){ msg.textContent='Abre el evento de hoy antes de vender'; msg.style.color='red'; return; }
+                const items = Array.from(cart.values()).map(it=>({ rowid: it.rowid, precio_venta: it.precio }));
+                try{
+                    btnConfirmarCarrito.disabled = true;
+                    const originalTxt = btnConfirmarCarrito.textContent;
+                    btnConfirmarCarrito.textContent = 'Guardando...';
+                    msg.textContent = 'Registrando ventas, espera...'; msg.style.color='#0ea5e9';
+                    const r = await fetch('/salidas/registrar_ventas_bulk', {
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({ comprador, observaciones, items, fecha_evento: evtFechaHoy })
+                    });
+                    let j = {};
+                    try { j = await r.json(); } catch(e){ j = {ok:false, msg:'Respuesta inválida'}; }
+                    if(r.ok && j.ok){
+                        const idsInfo = j.venta_ids && Array.isArray(j.venta_ids) ? ` (IDs: ${j.venta_ids.join(', ')})` : '';
+                        msg.textContent = (j.msg || 'Ventas registradas') + idsInfo; msg.style.color='green';
+                        cart.clear(); renderCarrito();
+                        // Refrescar resumen del evento sin recargar página
+                        try { await cargarEventoHoy(); } catch(_){ }
+                        // Llevar al usuario a la vista Venta del Día
+                        setTimeout(()=>{ window.location.href = '/venta/evento'; }, 900);
+                    } else {
+                        msg.textContent = j.msg || 'Error al registrar ventas'; msg.style.color='red';
+                    }
+                    btnConfirmarCarrito.textContent = originalTxt;
+                    btnConfirmarCarrito.disabled = false;
+                }catch(err){
+                    msg.textContent = err.message; msg.style.color='red';
+                    btnConfirmarCarrito.textContent = 'Confirmar venta del carrito';
+                    btnConfirmarCarrito.disabled = false;
+                }
+            })
+        }
+
+        // Toggle burbuja / panel
+        if(cartBubble){
+            cartBubble.addEventListener('click', ()=>{
+                carritoBox.classList.toggle('hidden');
+            });
+
+            // Drag & drop de la burbuja
+            let isDragging = false;
+            let dragOffsetX = 0, dragOffsetY = 0;
+
+            function onMouseDown(e){
+                isDragging = true;
+                const rect = cartBubble.getBoundingClientRect();
+                dragOffsetX = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+                dragOffsetY = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+                // Cambiar a posicionamiento con top/left
+                cartBubble.style.left = rect.left + 'px';
+                cartBubble.style.top = rect.top + 'px';
+                cartBubble.style.right = 'auto';
+                cartBubble.style.bottom = 'auto';
+                document.body.style.userSelect = 'none';
+            }
+
+            function onMouseMove(e){
+                if(!isDragging) return;
+                const x = (e.clientX || (e.touches && e.touches[0].clientX)) - dragOffsetX;
+                const y = (e.clientY || (e.touches && e.touches[0].clientY)) - dragOffsetY;
+                // Limitar dentro del viewport
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                const rect = cartBubble.getBoundingClientRect();
+                const maxX = vw - rect.width - 4;
+                const maxY = vh - rect.height - 4;
+                const nx = Math.max(4, Math.min(x, maxX));
+                const ny = Math.max(4, Math.min(y, maxY));
+                cartBubble.style.left = nx + 'px';
+                cartBubble.style.top = ny + 'px';
+            }
+
+            function onMouseUp(){
+                isDragging = false;
+                document.body.style.userSelect = '';
+            }
+
+            cartBubble.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+            // Touch support
+            cartBubble.addEventListener('touchstart', onMouseDown, {passive:true});
+            window.addEventListener('touchmove', onMouseMove, {passive:false});
+            window.addEventListener('touchend', onMouseUp);
+        }
+        if(cartClose){
+            cartClose.addEventListener('click', ()=>{
+                carritoBox.classList.add('hidden');
+            });
+        }
 
         // marcar donado/obsoleto
         document.querySelectorAll('.markOut').forEach(b => {
             b.addEventListener('click', async function(){
-                const rowid = this.dataset.rowid; const accion = this.dataset.accion;
+                const rowid = this.dataset.rowid; 
+                const accion = this.dataset.accion;
                 if(!confirm(`Marcar como ${accion}? Esta acción actualizará el estado en la base de datos.`)) return;
                 try{
                     const r = await fetch('/salidas/mark_out', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rowid, accion})});
                     const j = await r.json();
-                    if(r.ok && j.ok){ msg.textContent = j.msg; this.disabled = true; setTimeout(()=>location.reload(),700); }
+                    if(r.ok && j.ok){ 
+                        msg.textContent = j.msg; 
+                        this.disabled = true; 
+                        setTimeout(()=>location.reload(),700); 
+                    }
                     else { msg.textContent = j.msg || 'Error'; }
                 }catch(e){ msg.textContent = e.message }
             })
@@ -146,6 +724,206 @@
                 window.location.href = '/salidas?' + params.toString();
             })
         }
+
+        // Form búsqueda reubicar (recarga misma ruta para reutilizar search_results)
+        const searchFormReu = document.getElementById('searchFormReubicar');
+        if(searchFormReu){
+            searchFormReu.addEventListener('submit', function(e){
+                e.preventDefault();
+                const q = document.getElementById('searchQReu').value.trim();
+                const f = document.getElementById('searchFieldReu').value;
+                const params = new URLSearchParams();
+                if(q) params.set('q', q);
+                if(f) params.set('search_field', f);
+                // Mostrar pestaña reubicar tras búsqueda
+                params.set('panel', 'reubicar');
+                window.location.href = '/salidas?' + params.toString();
+            })
+        }
+
+        // Modal reubicar lógica
+        const modalReu = document.getElementById('modalReubicar');
+        const closeReu = document.querySelector('.closeReu');
+        const cancelarReu = document.getElementById('cancelarReu');
+        const formReu = document.getElementById('formReubicar');
+        const selectUbicaciones = document.getElementById('reuUbicacionNueva');
+
+        async function cargarUbicaciones(){
+            try{
+                const r = await fetch('/ubicaciones/catalogo');
+                const j = await r.json();
+                if(!j.ok) return;
+                selectUbicaciones.innerHTML = '<option value="">Seleccione...</option>';
+                j.ubicaciones.forEach(u=>{
+                    const opt = document.createElement('option');
+                    opt.value = u.nombre;
+                    opt.textContent = u.nombre + ' (' + u.nivel + ')';
+                    selectUbicaciones.appendChild(opt);
+                })
+            }catch(e){ console.error(e); }
+        }
+
+        document.querySelectorAll('.btnReubicar').forEach(btn => {
+            btn.addEventListener('click', async function(){
+                await cargarUbicaciones();
+                document.getElementById('reuRowid').value = this.dataset.rowid;
+                document.getElementById('reuProducto').textContent = this.dataset.sku;
+                document.getElementById('reuUbicacionActual').textContent = this.dataset.ubicacion || '—';
+                modalReu.classList.remove('hidden');
+            });
+        });
+
+        if(closeReu){ closeReu.addEventListener('click', ()=> modalReu.classList.add('hidden')); }
+        if(cancelarReu){ cancelarReu.addEventListener('click', ()=> modalReu.classList.add('hidden')); }
+        window.addEventListener('click', function(ev){ if(ev.target === modalReu){ modalReu.classList.add('hidden'); } });
+
+        if(formReu){
+            formReu.addEventListener('submit', async function(e){
+                e.preventDefault();
+                const fd = new FormData(formReu);
+                const rowid = fd.get('rowid');
+                const ubicacion = fd.get('ubicacion');
+                if(!ubicacion){ alert('Seleccione ubicación'); return; }
+                try{
+                    const r = await fetch('/inventario/reubicar', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rowid, ubicacion})});
+                    const j = await r.json();
+                    if(r.ok && j.ok){
+                        msg.textContent = j.msg + ' ('+ j.de + ' -> ' + j.a + ')';
+                        msg.style.color = 'green';
+                        modalReu.classList.add('hidden');
+                        setTimeout(()=>location.reload(), 1200);
+                    } else {
+                        msg.textContent = j.msg || 'Error';
+                        msg.style.color = 'red';
+                    }
+                }catch(err){ msg.textContent = err.message; msg.style.color='red'; }
+            })
+        }
+
+        // Si se llega con panel=reubicar, activar esa pestaña
+        const paramsUrl = new URLSearchParams(window.location.search);
+        if(paramsUrl.get('panel') === 'reubicar'){
+            showReubicar();
+        }
+
+        // ---------- CRUD Ubicaciones ----------
+        const crudWrap = document.getElementById('crudUbicaciones');
+        const toggleCrudBtn = document.getElementById('toggleCrudUbicaciones');
+        const formAgregarUbic = document.getElementById('formAgregarUbicacion');
+        const tablaUbicacionesBody = document.querySelector('#tablaUbicaciones tbody');
+        const filtroNivelUbic = document.getElementById('filtroNivelUbic');
+        const refrescarUbicacionesBtn = document.getElementById('refrescarUbicaciones');
+
+        if(toggleCrudBtn){
+            toggleCrudBtn.addEventListener('click', ()=>{
+                crudWrap.classList.toggle('hidden');
+                if(!crudWrap.classList.contains('hidden')){
+                    cargarUbicacionesCrud();
+                }
+            })
+        }
+
+        async function cargarUbicacionesCrud(){
+            const nivel = filtroNivelUbic.value.trim();
+            let url = '/ubicaciones/catalogo';
+            if(nivel) url += '?nivel=' + encodeURIComponent(nivel);
+            try{
+                const r = await fetch(url);
+                const j = await r.json();
+                if(!j.ok){ tablaUbicacionesBody.innerHTML = '<tr><td colspan="5">Error al cargar</td></tr>'; return; }
+                tablaUbicacionesBody.innerHTML = '';
+                j.ubicaciones.forEach((u,i)=>{
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${i+1}</td>
+                        <td><input type="text" value="${u.nombre}" data-orig-nombre="${u.nombre}" class="editNombre" style="width:140px;"></td>
+                        <td><select class="editNivel">
+                            <option ${u.nivel==='PREESCOLAR'?'selected':''}>PREESCOLAR</option>
+                            <option ${u.nivel==='PRIMARIA'?'selected':''}>PRIMARIA</option>
+                            <option ${u.nivel==='SECUNDARIA'?'selected':''}>SECUNDARIA</option>
+                            <option ${u.nivel==='PREPARATORIA'?'selected':''}>PREPARATORIA</option>
+                        </select></td>
+                        <td><input type="text" value="${u.nota||''}" class="editNota" style="width:160px;"></td>
+                        <td>
+                            <button class="btnGuardarUbic" data-nombre="${u.nombre}" data-nivel="${u.nivel}">Guardar</button>
+                            <button class="btnEliminarUbic" data-nombre="${u.nombre}" data-nivel="${u.nivel}" style="background:#dc3545;">Eliminar</button>
+                        </td>`;
+                    tablaUbicacionesBody.appendChild(tr);
+                })
+                if(j.ubicaciones.length===0){ tablaUbicacionesBody.innerHTML = '<tr><td colspan="5">Sin ubicaciones.</td></tr>'; }
+            }catch(e){ tablaUbicacionesBody.innerHTML = '<tr><td colspan="5">Error</td></tr>'; }
+        }
+
+        if(refrescarUbicacionesBtn){ refrescarUbicacionesBtn.addEventListener('click', cargarUbicacionesCrud); }
+        if(filtroNivelUbic){ filtroNivelUbic.addEventListener('change', cargarUbicacionesCrud); }
+
+        if(formAgregarUbic){
+            formAgregarUbic.addEventListener('submit', async function(e){
+                e.preventDefault();
+                const nombre = document.getElementById('catNombre').value.trim();
+                const nivel = document.getElementById('catNivel').value.trim();
+                const nota = document.getElementById('catNota').value.trim();
+                if(!nombre || !nivel){ alert('Nombre y nivel requeridos'); return; }
+                try{
+                    const r = await fetch('/ubicaciones/agregar', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nombre, nivel, nota})});
+                    const j = await r.json();
+                    if(r.ok && j.ok){
+                        msg.textContent = j.msg; msg.style.color='green';
+                        formAgregarUbic.reset();
+                        cargarUbicacionesCrud();
+                    } else { msg.textContent = j.msg || 'Error'; msg.style.color='red'; }
+                }catch(err){ msg.textContent = err.message; msg.style.color='red'; }
+            })
+        }
+
+        tablaUbicacionesBody.addEventListener('click', async function(e){
+            const btnG = e.target.closest('.btnGuardarUbic');
+            const btnE = e.target.closest('.btnEliminarUbic');
+            if(btnG){
+                const tr = btnG.closest('tr');
+                const editNombre = tr.querySelector('.editNombre').value.trim();
+                const editNivel = tr.querySelector('.editNivel').value.trim();
+                const editNota = tr.querySelector('.editNota').value.trim();
+                const origNombre = btnG.dataset.nombre;
+                const origNivel = btnG.dataset.nivel;
+                if(!editNombre || !editNivel){ alert('Campos requeridos'); return; }
+                try{
+                    // Para editar: necesitamos el id; como no lo mostramos recuperamos por combinación original
+                    // Simplificación: pedir lista completa y localizar ID
+                    const all = await fetch('/ubicaciones/catalogo');
+                    const dataAll = await all.json();
+                    let idEncontrado = null;
+                    if(dataAll.ok){
+                        const m = dataAll.ubicaciones.find(u=>u.nombre===origNombre && u.nivel===origNivel);
+                        if(m){ idEncontrado = m.id || m.rowid; }
+                    }
+                    if(!idEncontrado){ msg.textContent='No se identificó ID para edición'; msg.style.color='red'; return; }
+                    const r = await fetch('/ubicaciones/editar', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: idEncontrado, nombre: editNombre, nivel: editNivel, nota: editNota})});
+                    const j = await r.json();
+                    if(r.ok && j.ok){ msg.textContent=j.msg; msg.style.color='green'; cargarUbicacionesCrud(); }
+                    else { msg.textContent=j.msg||'Error'; msg.style.color='red'; }
+                }catch(err){ msg.textContent=err.message; msg.style.color='red'; }
+            }
+            if(btnE){
+                if(!confirm('¿Eliminar ubicación?')) return;
+                const origNombre = btnE.dataset.nombre;
+                const origNivel = btnE.dataset.nivel;
+                try{
+                    const all = await fetch('/ubicaciones/catalogo');
+                    const dataAll = await all.json();
+                    let idEncontrado = null;
+                    if(dataAll.ok){
+                        const m = dataAll.ubicaciones.find(u=>u.nombre===origNombre && u.nivel===origNivel);
+                        if(m){ idEncontrado = m.id || m.rowid; }
+                    }
+                    if(!idEncontrado){ msg.textContent='No se identificó ID para eliminar'; msg.style.color='red'; return; }
+                    const r = await fetch('/ubicaciones/eliminar', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: idEncontrado})});
+                    const j = await r.json();
+                    if(r.ok && j.ok){ msg.textContent=j.msg; msg.style.color='green'; cargarUbicacionesCrud(); }
+                    else { msg.textContent=j.msg||'Error'; msg.style.color='red'; }
+                }catch(err){ msg.textContent=err.message; msg.style.color='red'; }
+            }
+        });
     </script>
 </body>
 </html>

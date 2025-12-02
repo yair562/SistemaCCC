@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/venta.css') }}">
 </head>
 <body>
-    <h1>Venta</h1>
+    <h1>Gestión de Venta</h1>
 
     <div class="toolbar">
         <div class="left">
@@ -23,9 +23,6 @@
             <form id="searchForm" method="get" action="{{ url_for('venta') }}">
                 <input id="searchInput" type="text" name="q" placeholder="Buscar por SKU, marca, modelo o escanear" value="{{ q if q is defined else '' }}">
                 <button type="submit">🔎 Buscar</button>
-                <input id="scannerInput" type="text" placeholder="Escanea aquí">
-                <button id="focusScanner" type="button">🎯 Scan</button>
-                <!-- Simular escaneo (útil para pruebas en otras PCs) -->
                 <!-- Controles del scanner del servidor -->
                 <button id="startServerScan" type="button">Iniciar scanner (servidor)</button>
                 <button id="stopServerScan" type="button">Detener scanner</button>
@@ -33,51 +30,9 @@
             </form>
         </div>
     </div>
+
     <section class="section section-top">
         <h2>Buscar equipos para cambiar a VENTA</h2>
-        <div class="table-wrap">
-                <table class="productos">
-                <tr>
-                    <th>ID</th>
-                    <th>SKU</th>
-                    <th>Tipo</th>
-                    <th>Marca</th>
-                    <th>Modelo</th>
-                    <th>No. Serie</th>
-                    <th>Precio</th>
-                    <th>Acción</th>
-                </tr>
-                <tbody id="searchResultsBody">
-                {% if search_results %}
-                    {% for p in search_results %}
-                    <tr>
-                        <td>{{ p[0] }}</td>
-                        <td>{{ p[1] }}</td>
-                        <td>{{ p[3] }}</td>
-                        <td>{{ p[4] }}</td>
-                        <td>{{ p[5] }}</td>
-                        <td>{{ p[6] }}</td>
-                        <td>{{ p[8] }}</td>
-                        <td>
-                            <form method="post" action="{{ url_for('venta_update_status') }}" style="display:inline">
-                                <input type="hidden" name="rowid" value="{{ p[0] }}">
-                                <input class="small-input" type="text" name="precio" placeholder="Precio (opcional)">
-                                <button type="submit">Poner a VENTA</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr><td colspan="8">Use el buscador para encontrar equipos y ponerlos en estado VENTA.</td></tr>
-                {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <section style="margin-top:18px">
-    <section class="section section-mid">
-        <h2>Equipos en estado VENTA</h2>
         <div class="table-wrap">
             <table class="productos">
                 <tr>
@@ -87,124 +42,76 @@
                     <th>Marca</th>
                     <th>Modelo</th>
                     <th>No. Serie</th>
-                    <th>Precio</th>
-                    <th>Acciones</th>
+                    <th>Precio Actual</th>
+                    <th>Acción</th>
                 </tr>
-                {% if productos_venta %}
-                    {% for p in productos_venta %}
+                <tbody id="searchResultsBody">
+                {% if search_results %}
                     <tr>
-                        <td>{{ p[0] }}</td>
+                        <td colspan="8" style="background:#f9fafb">
+                            <form id="bulkVentaForm" method="post" action="{{ url_for('venta_update_status') }}" onsubmit="return prepareBulkVenta(event)" style="display:flex; gap:10px; align-items:center;">
+                                <input type="hidden" name="scope" value="selected">
+                                <input type="hidden" id="bulkRowids" name="rowids" value="">
+                                <input class="small-input-wide" type="text" name="precio" placeholder="Precio para seleccionados (opcional)">
+                                <button type="submit">Poner a VENTA (seleccionados)</button>
+                                <span id="bulkCounter" style="color:#555; font-size:12px;">0 seleccionados</span>
+                            </form>
+                        </td>
+                    </tr>
+                    {% for p in search_results %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" class="bulk-select" value="{{ p[0] }}" onchange="updateBulkCounter()">
+                            {{ p[0] }}
+                        </td>
                         <td>{{ p[1] }}</td>
                         <td>{{ p[3] }}</td>
                         <td>{{ p[4] }}</td>
                         <td>{{ p[5] }}</td>
                         <td>{{ p[6] }}</td>
-                        <td>{{ p[8] }}</td>
+                        <td>{{ p[8] if p[8] else 'Sin precio' }}</td>
                         <td>
-                            <form method="get" action="{{ url_for('request_edit', rowid=p[0]) }}" style="display:inline">
-                                <button type="submit">Editar</button>
-                            </form>
-                            <form method="post" action="{{ url_for('venta_update_price') }}" style="display:inline; margin-left:8px">
+                            <form method="post" action="{{ url_for('venta_update_status') }}" class="inline-form">
                                 <input type="hidden" name="rowid" value="{{ p[0] }}">
-                                <input class="small-input-wide" type="text" name="precio" placeholder="Nuevo precio">
-                                <label class="label-inline">
-                                    <input type="radio" name="scope" value="single" checked> Solo este
-                                </label>
-                                <label class="label-inline">
-                                    <input type="radio" name="scope" value="category"> Toda la categoría
-                                </label>
-                                <button type="submit" onclick="return confirmBulkPrice(event, this)">Actualizar</button>
+                                <input class="small-input" type="text" name="precio" placeholder="Precio (opcional)" value="{{ p[8] if p[8] }}">
+                                <div class="radio-row">
+                                    <label class="label-inline">
+                                        <input type="radio" name="scope" value="single" checked> Solo este
+                                    </label>
+                                    <label class="label-inline">
+                                        <input type="radio" name="scope" value="category"> Toda la categoría
+                                    </label>
+                                </div>
+                                <button class="btn-primary" type="submit" onclick="return confirmBulkVenta(event, this)">Poner a VENTA</button>
                             </form>
                         </td>
                     </tr>
                     {% endfor %}
                 {% else %}
-                    <tr><td colspan="8">No hay productos en estado VENTA.</td></tr>
+                    <tr><td colspan="8" class="empty-row">Escribe o escanea para buscar en el inventario y poner equipos en VENTA.</td></tr>
                 {% endif %}
+                </tbody>
             </table>
         </div>
     </section>
 
-    
+    <!-- Sección de listado de equipos en VENTA removida por solicitud: 
+         mantener solo buscador y acción para poner a VENTA desde resultados. -->
 
     <script>
-        // Simular escaneo desde UI (útil para pruebas en red)
-        const simulateBtn = document.getElementById('simulateBtn');
-        const simulateInput = document.getElementById('simulateInput');
-        if(simulateBtn){
-            simulateBtn.addEventListener('click', async ()=>{
-                const code = (simulateInput && simulateInput.value || '').trim();
-                if(!code) return alert('Ingresa un código para simular');
-                try{
-                    const r = await fetch('/simulate_scan', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code})});
-                    const j = await r.json();
-                    if(r.ok && j.ok){ alert('Simulado: '+j.code); }
-                    else alert('Error: '+(j.msg||r.status));
-                }catch(e){ alert('Error: '+e.message) }
-            });
-        }
-        // Enfocar input del scanner al presionar el botón
-        const focusBtn = document.getElementById('focusScanner');
-        if(focusBtn){
-            focusBtn.addEventListener('click', function(){
-                const s = document.getElementById('scannerInput');
-                if(s){ s.focus(); s.select(); }
-            });
-        }
-
-        const scanner = document.getElementById('scannerInput');
-        async function performScanSearch(code){
-            // Populate the scanner input but do not change the main search input.
-            const s = document.getElementById('scannerInput');
-            if(s) s.value = code;
-            // Try product_by_serial first (exact match). If found, render in the search results table.
-            try{
-                const r = await fetch('/product_by_serial?no=' + encodeURIComponent(code));
-                if(r.ok){
-                    const j = await r.json();
-                    if(j.ok && j.data){
-                        const body = document.getElementById('searchResultsBody');
-                        if(body){
-                            const p = j.data;
-                            body.innerHTML = `\
-                                <tr>\
-                                    <td>${p.rowid}</td>\
-                                    <td>${p.sku || ''}</td>\
-                                    <td>${p.tipo || ''}</td>\
-                                    <td>${p.marca || ''}</td>\
-                                    <td>${p.modelo || ''}</td>\
-                                    <td>${p.no_serie || ''}</td>\
-                                    <td>${p.precio || ''}</td>\
-                                    <td>\
-                                        <form method="post" action="/venta/update_status" style="display:inline">\
-                                            <input type="hidden" name="rowid" value="${p.rowid}">\
-                                            <input type="text" name="precio" placeholder="Precio (opcional)" style="width:100px">\
-                                            <button type="submit">Poner a VENTA</button>\
-                                        </form>\
-                                    </td>\
-                                </tr>`;
-                            // scroll into view
-                            body.closest('table').scrollIntoView({behavior:'smooth'});
-                        }
-                        return;
-                    }
-                }
-            }catch(e){
-                // fall through to fallback
-            }
-            // fallback: redirect to server search which will populate results and q input
-            window.location.href = '/venta?q=' + encodeURIComponent(code) + '&search_field=no_serie';
-        }
-
-        if(scanner){
-            scanner.addEventListener('keydown', function(e){
-                if(e.key === 'Enter'){
+        function confirmBulkVenta(e, btn) {
+            // Si el usuario seleccionó 'category' preguntar confirmación
+            const form = btn.closest('form');
+            if(!form) return true;
+            const scope = Array.from(form.querySelectorAll('input[name="scope"]')).find(r=>r.checked);
+            if(scope && scope.value === 'category'){
+                const ok = confirm('¿Deseas poner en estado VENTA a TODOS los productos de esta categoría?');
+                if(!ok){
                     e.preventDefault();
-                    const code = this.value.trim();
-                    if(!code) return;
-                    performScanSearch(code);
+                    return false;
                 }
-            });
+            }
+            return true;
         }
 
         function confirmBulkPrice(e, btn){
@@ -293,25 +200,27 @@
 
         if(startBtn) startBtn.addEventListener('click', startServerScanner);
         if(stopBtn) stopBtn.addEventListener('click', stopServerScanner);
-    </script>
-    <script>
-function pollScan() {
-    fetch('/last_scanned')
-    .then(r => r.json())
-    .then(d => {
-        if (d.codigo) {
-            const inp = document.getElementById("scan_input");
-            if (inp) {
-                inp.value = d.codigo;
-                inp.dispatchEvent(new Event("input"));
-            }
+
+        // ------------------ Selección múltiple para VENTA ------------------
+        function getSelectedRowids(){
+            return Array.from(document.querySelectorAll('.bulk-select:checked')).map(el=>el.value);
         }
-    })
-    .finally(() => setTimeout(pollScan, 300));
-}
-
-pollScan();
-</script>
-
+        function updateBulkCounter(){
+            const count = getSelectedRowids().length;
+            const counter = document.getElementById('bulkCounter');
+            if(counter){ counter.textContent = count + ' seleccionados'; }
+        }
+        function prepareBulkVenta(e){
+            const ids = getSelectedRowids();
+            if(ids.length === 0){
+                alert('Selecciona al menos un producto.');
+                e.preventDefault();
+                return false;
+            }
+            const input = document.getElementById('bulkRowids');
+            if(input){ input.value = ids.join(','); }
+            return true;
+        }
+    </script>
 </body>
 </html>

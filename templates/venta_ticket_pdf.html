@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color:#0f172a; }
+    .ticket { width: 100%; border: 1px solid #cbd5f5; border-radius: 8px; padding: 16px; }
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .logo { width: 64px; height: 64px; }
+    .title { font-size: 18px; font-weight: bold; }
+    .subtitle { font-size: 12px; color:#475569; }
+    .grid { width: 100%; margin-top: 10px; }
+    .grid td { width: 50%; vertical-align: top; padding: 2px 6px; }
+    .section-title { margin-top: 16px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+    <div class="header">
+      {% if logo_path %}<img class="logo" src="{{ logo_path }}" alt="Logo CCC">{% endif %}
+      <div>
+        <div class="title">COLEGIO CRISTÓBAL COLÓN</div>
+        <div class="subtitle">Ticket de venta — Inventario CCC</div>
+      </div>
+    </div>
+    <div class="section-title">Ticket #{{ ticket.codigo }}</div>
+    <table class="grid">
+      <tr>
+        <td>
+          <strong>Fecha:</strong> {{ ticket.fecha_venta or '' }}<br>
+          <strong>Evento:</strong> {{ ticket.evento_fecha or '—' }}<br>
+          <strong>Comprador:</strong> {{ ticket.comprador or '—' }}<br>
+          <strong>Vendedor:</strong> {{ ticket.vendedor or '—' }}
+        </td>
+        <td>
+          <strong>Artículos:</strong> {{ ticket.total_items }}<br>
+          <strong>Total:</strong> ${{ '%.2f'|format(ticket.total or 0) }}<br>
+          <strong>Ticket ID:</strong> {{ ticket.id }}
+        </td>
+      </tr>
+    </table>
+    {% if ticket.observaciones %}
+    <div class="section-title">Observaciones</div>
+    <p>{{ ticket.observaciones }}</p>
+    {% endif %}
+    <div class="section-title">Artículos</div>
+    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+      <thead>
+        <tr>
+          <th style="text-align:left; border-bottom:1px solid #94a3b8; padding:4px 2px;">SKU</th>
+          <th style="text-align:left; border-bottom:1px solid #94a3b8; padding:4px 2px;">Descripción</th>
+          <th style="text-align:right; border-bottom:1px solid #94a3b8; padding:4px 2px;">Precio</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td style="padding:4px 2px;">{{ item.sku }}</td>
+          <td style="padding:4px 2px;">
+            {{ (item.marca or '') }} {{ (item.modelo or '') }}{% if item.tipo %} ({{ item.tipo }}){% endif %}
+            {% if item.no_serie %}<br><span style="font-size:10px; color:#475569;">No. Serie: {{ item.no_serie }}</span>{% endif %}
+          </td>
+          <td style="padding:4px 2px; text-align:right;">${{ '%.2f'|format(item.precio or 0) }}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td colspan="2" style="padding:4px 2px; text-align:right; font-weight:bold; border-top:1px solid #94a3b8;">Total</td>
+          <td style="padding:4px 2px; text-align:right; font-weight:bold; border-top:1px solid #94a3b8;">${{ '%.2f'|format(ticket.total or 0) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

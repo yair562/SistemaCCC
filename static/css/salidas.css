@@ -184,3 +184,181 @@ button.markOut:hover {
     transform: translateY(-3px) !important;
     box-shadow: 0 10px 24px rgba(0,0,0,0.32) !important;
 }
+/* Badges para estado de evento */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.badge-on { background: #16a34a; color: #fff; }
+.badge-off { background: #e2e8f0; color: #334155; }
+/* Estilos para el modal */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 90%;
+    max-width: 500px;
+    animation: modalFadeIn 0.3s;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-50px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #000;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group textarea {
+    height: 80px;
+    resize: vertical;
+}
+
+.form-group span {
+    font-weight: 600;
+    color: #4f46e5;
+}
+
+button.registrarVenta {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+button.registrarVenta:hover {
+    background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(72, 187, 120, 0.3);
+}
+/* Botón agregar al carrito */
+button.addToCart {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    border: none;
+    margin-right: 6px;
+    box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25);
+}
+button.addToCart:hover { transform: translateY(-2px); }
+
+/* Caja del carrito */
+.cart-box {
+    position: fixed;
+    right: 16px;
+    bottom: 30%;
+    width: 520px;
+    max-width: calc(100% - 32px);
+    max-height: 76vh;
+    overflow: auto;
+    margin-top: 0;
+    padding: 16px 18px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 16px 36px rgba(0,0,0,0.18);
+    z-index: 1001;
+}
+.cart-header { display:flex; justify-content:space-between; align-items:center; }
+.cart-box h3 { margin-top: 0; font-size: 1.2rem; }
+.cart-actions {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    margin-top: 14px;
+}
+button.btn-secondary {
+    background: #6b7280;
+    color: #fff;
+}
+
+/* Burbuja flotante del carrito */
+.cart-bubble {
+    position: fixed;
+    right: 16px;
+    bottom: 32%;
+    background: #111827; /* negro */
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 16px 20px;
+    font-weight: 800;
+    font-size: 22px; /* icono más grande */
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+    z-index: 1000;
+    user-select: none;
+}
+.cart-bubble span { background:#ffffff; color:#111827; padding:4px 10px; border-radius:999px; margin-left:8px; font-weight:900; }
+
+@media (max-width: 700px) {
+    .cart-box { width: 96%; right: 2%; bottom: 12px; }
+    .cart-bubble { bottom: 14px; right: 12px; }
+}
+/* Ajustes para la nueva columna Tipo */
+.productos th:nth-child(2),  /* Columna Tipo */
+.productos td:nth-child(2) {
+    min-width: 120px;
+    max-width: 150px;
+}
+
+/* Asegurar que la tabla sea responsive */
+@media (max-width: 700px) {
+    .productos th:nth-child(2),
+    .productos td:nth-child(2) {
+        min-width: 80px;
+        max-width: 100px;
+    }
+}

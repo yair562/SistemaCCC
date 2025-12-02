@@ -2,17 +2,242 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Usuarios</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios - Sistema CCC</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/usuarios.css') }}">
 </head>
 <body>
-    <h1>Usuarios del sistema</h1>
-    <ul>
-        {% for u in usuarios %}
-        <li>{{ u.usuario }} — {{ u.rol }}</li>
-        {% endfor %}
-    </ul>
+    <div class="usuarios-container">
+        <div class="usuarios-header">
+            <h1>👥 Gestión de Usuarios</h1>
+            <button class="btn-agregar-usuario" onclick="abrirModalAgregar()">
+                ➕ Agregar Usuario
+            </button>
+        </div>
 
-    <br>
-    <a href="{{ url_for('admin') }}">🔙 Volver al panel</a>
+        <!-- Mensajes de alerta -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div id="alertContainer"></div>
+
+        <!-- Grid de usuarios -->
+        <div class="usuarios-grid">
+            {% for usuario in usuarios %}
+            <div class="usuario-card">
+                <div class="usuario-header">
+                    <div class="usuario-info">
+                        <h3>{{ usuario.usuario }}</h3>
+                        <span class="usuario-rol rol-admin">
+                            Administrador
+                        </span>
+                    </div>
+                    <div class="usuario-acciones">
+                        <button class="btn-editar" onclick="editarUsuario({{ usuario.id }}, '{{ usuario.usuario }}')">
+                            ✏️ Editar
+                        </button>
+                        <button class="btn-eliminar" onclick="eliminarUsuario({{ usuario.id }}, '{{ usuario.usuario }}')">
+                            🗑️ Eliminar
+                        </button>
+                    </div>
+                </div>
+                <div class="usuario-detalles">
+                    <div class="detalle-item">
+                        <span class="detalle-label">ID:</span>
+                        <span class="detalle-valor">{{ usuario.id }}</span>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-label">Estado:</span>
+                        <span class="detalle-valor" style="color: #388e3c;">● Activo</span>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-label">Privilegios:</span>
+                        <span class="detalle-valor">Acceso completo al sistema</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="actions">
+            <a href="{{ url_for('admin') }}" class="btn-back">🔙 Volver al Panel</a>
+        </div>
+    </div>
+
+    <!-- Modal para agregar/editar usuario -->
+    <div id="usuarioModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitulo">Agregar Usuario</h2>
+                <button class="close-modal" onclick="cerrarModal()">&times;</button>
+            </div>
+            <form id="usuarioForm" onsubmit="enviarFormulario(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="usuarioId" name="id">
+                    <input type="hidden" name="nivel" value="1">
+                    
+                    <div class="form-group">
+                        <label for="usuario">Nombre de Usuario:</label>
+                        <input type="text" id="usuario" name="usuario" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Contraseña:</label>
+                        <input type="password" id="password" name="password" class="form-control" required>
+                        <div id="passwordStrength" class="password-strength"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tipoUsuario">Tipo de Usuario:</label>
+                        <div class="form-control" style="background-color: #e3f2fd; color: #1976d2; font-weight: 600; border: 1px solid #bbdefb;">
+                            👑 Administrador
+                        </div>
+                        <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                            Todos los usuarios tienen privilegios de administrador
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+                    <button type="submit" class="btn-guardar" id="modalSubmit">Agregar Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let modal = document.getElementById('usuarioModal');
+        let esEdicion = false;
+
+        // Funciones del modal
+        function abrirModalAgregar() {
+            esEdicion = false;
+            document.getElementById('modalTitulo').textContent = 'Agregar Usuario';
+            document.getElementById('modalSubmit').textContent = 'Agregar Usuario';
+            document.getElementById('usuarioForm').reset();
+            document.getElementById('usuarioId').value = '';
+            document.getElementById('password').required = true;
+            modal.style.display = 'block';
+        }
+
+        function editarUsuario(id, usuario) {
+            esEdicion = true;
+            document.getElementById('modalTitulo').textContent = 'Editar Usuario';
+            document.getElementById('modalSubmit').textContent = 'Actualizar Usuario';
+            document.getElementById('usuarioId').value = id;
+            document.getElementById('usuario').value = usuario;
+            document.getElementById('password').required = false;
+            document.getElementById('password').placeholder = 'Dejar vacío para mantener contraseña actual';
+            modal.style.display = 'block';
+        }
+
+        function cerrarModal() {
+            modal.style.display = 'none';
+            document.getElementById('password').placeholder = '';
+        }
+
+        function eliminarUsuario(id, usuario) {
+            if (confirm(`¿Estás seguro de que quieres eliminar al usuario "${usuario}"?\n\nEsta acción no se puede deshacer.`)) {
+                fetch('/usuarios/eliminar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `id=${id}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarAlerta('success', data.message);
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        mostrarAlerta('error', data.message);
+                    }
+                })
+                .catch(error => {
+                    mostrarAlerta('error', 'Error de conexión');
+                });
+            }
+        }
+
+        // Envío del formulario
+        function enviarFormulario(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(document.getElementById('usuarioForm'));
+            const url = esEdicion ? '/usuarios/editar' : '/usuarios/agregar';
+            
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarAlerta('success', data.message);
+                    cerrarModal();
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    mostrarAlerta('error', data.message);
+                }
+            })
+            .catch(error => {
+                mostrarAlerta('error', 'Error de conexión');
+            });
+        }
+
+        // Mostrar alertas
+        function mostrarAlerta(tipo, mensaje) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertClass = tipo === 'success' ? 'alert-success' : 'alert-error';
+            
+            alertContainer.innerHTML = `
+                <div class="alert ${alertClass}">
+                    ${mensaje}
+                </div>
+            `;
+            
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        // Indicador de fuerza de contraseña
+        document.getElementById('password').addEventListener('input', function() {
+            const strength = document.getElementById('passwordStrength');
+            const password = this.value;
+            
+            if (password.length === 0) {
+                strength.textContent = '';
+                return;
+            }
+            
+            let score = 0;
+            if (password.length >= 8) score++;
+            if (/[A-Z]/.test(password)) score++;
+            if (/[0-9]/.test(password)) score++;
+            if (/[^A-Za-z0-9]/.test(password)) score++;
+            
+            const levels = ['', 'Débil', 'Medio', 'Fuerte', 'Muy Fuerte'];
+            const classes = ['', 'strength-weak', 'strength-medium', 'strength-strong', 'strength-strong'];
+            
+            strength.textContent = `Fortaleza: ${levels[score]}`;
+            strength.className = `password-strength ${classes[score]}`;
+        });
+
+        // Cerrar modal al hacer clic fuera
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                cerrarModal();
+            }
+        }
+    </script>
 </body>
 </html>

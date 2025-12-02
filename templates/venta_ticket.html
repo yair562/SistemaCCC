@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ticket de Venta #{{ ticket.codigo }} — COLEGIO CRISTÓBAL COLÓN</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/salidas.css') }}">
+  <style>
+    .ticket { max-width: 680px; margin: 20px auto; background:#fff; padding:18px; border:1px solid #e5e7eb; border-radius:12px; }
+    .ticket h2 { margin-top:0; }
+    .ticket .grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .ticket .actions { display:flex; gap:10px; margin-top:12px; }
+    .qr { text-align:center; margin-top: 16px; }
+    .brand { display:flex; align-items:center; gap:12px; margin-bottom: 12px; }
+    .brand img { width: 56px; height: 56px; border-radius: 6px; object-fit: cover; }
+    .brand-title { line-height: 1.2; }
+    .brand-title .name { font-weight: 700; }
+    .brand-title .subtitle { color:#334155; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="left"><h1>Ticket de Venta</h1></div>
+    <div class="right"><a class="back" href="{{ url_for('venta_evento_page') }}">🔙 Venta del Día</a></div>
+  </div>
+
+  <div class="ticket">
+    <div class="brand">
+      <img src="{{ url_for('static', filename='images/CCClogo.jpg') }}" alt="Logo CCC">
+      <div class="brand-title">
+        <div class="name">COLEGIO CRISTÓBAL COLÓN</div>
+        <div class="subtitle">Ticket de venta — Inventario CCC</div>
+      </div>
+    </div>
+    <h2>Ticket #{{ ticket.codigo }}</h2>
+    <div class="grid">
+      <div>
+        <strong>Fecha:</strong> {{ ticket.fecha_venta or '' }}<br>
+        <strong>Evento:</strong> {{ ticket.evento_fecha or '—' }}<br>
+        <strong>Comprador:</strong> {{ ticket.comprador or '—' }}<br>
+        <strong>Vendedor:</strong> {{ ticket.vendedor or '—' }}
+      </div>
+      <div>
+        <strong>Artículos:</strong> {{ ticket.total_items }}<br>
+        <strong>Total:</strong> ${{ '%.2f'|format(ticket.total or 0) }}<br>
+        <strong>Ticket ID:</strong> {{ ticket.id }}
+      </div>
+    </div>
+    {% if ticket.observaciones %}
+      <div style="margin-top:10px;"><strong>Observaciones:</strong> {{ ticket.observaciones }}</div>
+    {% endif %}
+
+    <div style="margin-top:14px;">
+      <table class="productos" style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left; border-bottom:1px solid #e5e7eb; padding:6px 4px;">SKU</th>
+            <th style="text-align:left; border-bottom:1px solid #e5e7eb; padding:6px 4px;">Descripción</th>
+            <th style="text-align:right; border-bottom:1px solid #e5e7eb; padding:6px 4px;">Precio</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td style="padding:6px 4px;">{{ item.sku }}</td>
+            <td style="padding:6px 4px;">{{ (item.marca or '') }} {{ (item.modelo or '') }}{% if item.tipo %} ({{ item.tipo }}){% endif %}{% if item.no_serie %}<br><small>No. Serie: {{ item.no_serie }}</small>{% endif %}</td>
+            <td style="padding:6px 4px; text-align:right;">${{ '%.2f'|format(item.precio or 0) }}</td>
+          </tr>
+          {% endfor %}
+          <tr>
+            <td colspan="2" style="padding:6px 4px; text-align:right; font-weight:bold; border-top:1px solid #e5e7eb;">Total</td>
+            <td style="padding:6px 4px; text-align:right; font-weight:bold; border-top:1px solid #e5e7eb;">${{ '%.2f'|format(ticket.total or 0) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="qr">
+      <p>Escanea para abrir y descargar este ticket completo:</p>
+      {% set url_ticket = request.host_url.rstrip('/') + url_for('venta_ticket_pdf', venta_id=ticket.anchor_venta_id) %}
+      <a href="{{ url_ticket }}" target="_blank">
+           <img alt="QR Ticket" src="{{ url_for('venta_ticket_qr', venta_id=ticket.anchor_venta_id) }}" width="200" height="200"
+             onerror="this.onerror=null; this.src='https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl='+encodeURIComponent('{{ request.host_url.rstrip('/') + url_for('venta_ticket_pdf', venta_id=ticket.anchor_venta_id) }}');" />
+      </a>
+      <div class="actions">
+        <button onclick="window.print()">Imprimir / Guardar PDF</button>
+        <a class="back" href="{{ url_ticket }}">⬇️ Descargar PDF</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

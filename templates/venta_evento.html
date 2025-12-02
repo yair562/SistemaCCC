@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Venta del Día</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/salidas.css') }}">
+</head>
+<body>
+  <div class="toolbar">
+    <div class="left"><h1>Venta del Día</h1></div>
+    <div class="right"><a class="back" href="{{ url_for('salidas') }}">🔙 Salidas</a></div>
+  </div>
+
+  <div style="margin:8px 0; padding:10px; background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px;">
+    <strong>Fecha:</strong> {{ evento_fecha }}
+    | <strong>Estado:</strong> {{ evento_estado }}
+    | <strong>Total vendido:</strong> ${{ '%.2f'|format(total_vendido or 0) }}
+    <div style="margin-top:10px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+      <a class="back" style="padding:6px 14px;" target="_blank" href="{{ url_for('venta_evento_reporte_pdf', fecha=evento_fecha) }}">⬇️ Descargar reporte PDF</a>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <small>QR del reporte</small>
+        <img src="{{ url_for('venta_evento_reporte_qr', fecha=evento_fecha) }}" alt="QR Reporte" width="90" height="90"
+             style="border:1px solid #d1d5db; padding:4px; border-radius:6px; background:#fff;">
+      </div>
+    </div>
+  </div>
+
+  <h2>Ventas registradas hoy</h2>
+  {% if ventas_hoy and ventas_hoy|length > 0 %}
+  <table class="productos">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Ticket</th>
+        <th>SKU</th>
+        <th>Marca</th>
+        <th>Modelo</th>
+        <th>Precio</th>
+        <th>Comprador</th>
+        <th>Vendedor</th>
+        <th>Fecha</th>
+        <th>Ver / QR</th>
+        <th>Revertir</th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for v in ventas_hoy %}
+      <tr>
+        <td>{{ v.id }}</td>
+        <td>{{ v.ticket_id or v.id }}</td>
+        <td>{{ v.sku }}</td>
+        <td>{{ v.marca }}</td>
+        <td>{{ v.modelo }}</td>
+        <td>${{ '%.2f'|format(v.precio or 0) }}</td>
+        <td>{{ v.comprador }}</td>
+        <td>{{ v.vendedor }}</td>
+        <td>{{ v.fecha }}</td>
+        <td style="text-align:center;">
+          <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+            <a class="back" href="{{ url_for('venta_ticket', venta_id=v.id) }}" target="_blank" style="padding:4px 10px;">👁 Ver</a>
+            {% set ticket_url = request.host_url.rstrip('/') + url_for('venta_ticket_pdf', venta_id=v.id) %}
+            <a href="{{ ticket_url }}" title="Descargar ticket" target="_blank">
+              <img alt="QR" src="{{ url_for('venta_ticket_qr', venta_id=v.id) }}" width="120" height="120"
+                   onerror="this.onerror=null; this.src='https://chart.googleapis.com/chart?chs=120x120&cht=qr&chl='+encodeURIComponent('{{ request.host_url.rstrip('/') + url_for('venta_ticket_pdf', venta_id=v.id) }}');" />
+            </a>
+          </div>
+        </td>
+        <td style="text-align:center;">
+          <button class="btn-revertir" data-venta-id="{{ v.id }}" style="padding:6px 10px; border:1px solid #dc2626; color:#dc2626; background:#fff; border-radius:6px; cursor:pointer;">↩️ Revertir</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No hay ventas registradas para hoy.</p>
+  {% endif %}
+
+  <h3>Productos en estado VENTA</h3>
+  {% if productos_venta and productos_venta|length > 0 %}
+  <table class="productos">
+    <thead>
+      <tr>
+        <th>RowID</th>
+        <th>SKU</th>
+        <th>Tipo</th>
+        <th>Marca</th>
+        <th>Modelo</th>
+        <th>No. Serie</th>
+        <th>Precio</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in productos_venta %}
+      <tr>
+        <td>{{ p[0] }}</td>
+        <td>{{ p[1] }}</td>
+        <td>{{ p[2] }}</td>
+        <td>{{ p[3] }}</td>
+        <td>{{ p[4] }}</td>
+        <td>{{ p[5] }}</td>
+        <td>${{ '%.2f'|format(p[6] or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No hay productos listados en VENTA.</p>
+  {% endif %}
+
+  <script>
+    async function revertirVenta(ventaId, btn){
+      if(!ventaId) return;
+      const ok = confirm('¿Revertir esta venta y regresar el producto a estado VENTA?');
+      if(!ok) return;
+      btn.disabled = true;
+      btn.textContent = 'Revirtiendo…';
+      try{
+        const resp = await fetch('/ventas/revertir', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({venta_ids: [ventaId]})
+        });
+        const data = await resp.json();
+        if(resp.ok && data.ok){
+          const row = btn.closest('tr');
+          if(row) row.remove();
+          alert(data.msg || 'Venta revertida');
+        } else {
+          alert((data && data.msg) || 'No se pudo revertir');
+          btn.disabled = false;
+          btn.textContent = '↩️ Revertir';
+        }
+      }catch(err){
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '↩️ Revertir';
+      }
+    }
+
+    document.querySelectorAll('.btn-revertir').forEach(btn => {
+      btn.addEventListener('click', ()=>revertirVenta(btn.dataset.ventaId, btn));
+    });
+  </script>
+</body>
+</html>

@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Auto serial forwarder with server discovery and robust read loop.
+Serial Scanner Forwarder – versión limpia y documentada
 
-Features added/adapted:
-- Auto-detect scanner port by description/hwid keywords.
-- Resolve server automatically via hostname, `server.txt`, `server_cache.txt` or quick LAN scan.
-- Read scanner input char-by-char and assemble lines (handles HID-like keyboard scanners and serial scanners).
-- Reconnection logic and retries.
+Propósito:
+    Detectar automáticamente un escáner conectado por USB/Serial,
+    leer sus datos, y enviarlos a un servidor Flask centralizado.
 
-To run:
-  python serial_forwarder.py --server 192.168.1.10
-  python serial_forwarder.py --auto --filter "USB"
+Características:
+    ✓ Auto-detección del puerto del escáner.
+    ✓ Resolución automática del servidor (hostname, server.txt, cache, escaneo rápido LAN).
+    ✓ Lectura carácter por carácter para compatibilidad con HID/Serial.
+    ✓ Ensamblado seguro de líneas completas (cada lect ura = un código).
+    ✓ Control opcional de la línea DTR (evita que algunos escáneres se apaguen).
+    ✓ Reintentos automáticos si el puerto se desconecta.
+    ✓ Funciona en cualquier PC conectada a la misma red.
 
-Requires: pyserial, requests
+Requiere:
+    pip install pyserial requests
 """
+
 import argparse
 import time
 import sys
@@ -22,68 +28,102 @@ import os
 import re
 from typing import Optional
 
+# ---------------------------------------
+# MÓDULOS EXTERNOS
+# ---------------------------------------
 try:
     import serial
     import serial.tools.list_ports
 except Exception:
-    print('pyserial is required. Install with: pip install pyserial')
+    print("ERROR: pyserial es obligatorio. Instala con: pip install pyserial")
     sys.exit(1)
 
 try:
     import requests
 except Exception:
-    print('requests is required. Install with: pip install requests')
+    print("ERROR: requests es obligatorio. Instala con: pip install requests")
     sys.exit(1)
 
 
-# -------------------------------------------------------------
-# CONFIG
-# -------------------------------------------------------------
+# ---------------------------------------
+# CONFIGURACIÓN
+# ---------------------------------------
 DEFAULT_SERVER_HOSTNAME = "inventario.local"
 SERVER_FILE = "server.txt"
 SERVER_CACHE = "server_cache.txt"
 PUSH_ENDPOINT = "/push_scan"
 BAUD = 9600
 
-# Prefijos típicos de scanners USB (pueden ampliarse)
-COMMON_SCANNER_KEYWORDS = ["USB", "Scanner", "HID", "Barcode", "Prolific"]
+# Palabras clave típicas en descripciones de escáneres USB/Serial
+COMMON_SCANNER_KEYWORDS = ["usb", "scanner", "hid", "barcode", "prolific"]
 
 
+# ---------------------------------------
+# VALIDACIONES BÁSICAS
+# ---------------------------------------
 def validate_ip(ip: str) -> bool:
+    """Verifica si la cadena tiene formato IPv4 simple."""
     return re.match(r"^\d{1,3}(\.\d{1,3}){3}$", ip) is not None
 
 
 def save_server_cache(ip: str):
+    """Guarda la IP resuelta en un archivo de caché."""
     try:
         with open(SERVER_CACHE, "w") as f:
             f.write(ip)
     except Exception:
-        pass
+        pass  # No es crítico
 
 
+# ---------------------------------------
+# DETECCIÓN DE PUERTO SERIAL
+# ---------------------------------------
 def detect_scanner_port(filter_text: Optional[str] = None, timeout: float = 0.0) -> Optional[str]:
-    """Scan ports and return first matching device. If timeout>0, keep trying until timeout seconds."""
+    """
+    Busca un dispositivo serial cuyo descriptor coincida con:
+    - Palabras clave típicas de escáner
+    - Texto filtrado por el usuario (--filter)
+    Si timeout > 0, reintenta hasta que el tiempo expire.
+    """
     start = time.time()
+
+    filter_lower = filter_text.lower() if filter_text else None
+
     while True:
         ports = list(serial.tools.list_ports.comports())
+
         for p in ports:
             desc = (p.description or "").lower()
             hwid = (p.hwid or "").lower()
-            dev = p.device
-            if filter_text:
-                if filter_text.lower() in desc or filter_text.lower() in hwid or filter_text.lower() in (dev or '').lower():
-                    return dev
-            # common keywords
-            if any(k.lower() in desc or k.lower() in hwid for k in COMMON_SCANNER_KEYWORDS):
-                return dev
+            dev = (p.device or "").lower()
 
-        if timeout and (time.time() - start) > timeout:
+            # Si se especificó un filtro explícito
+            if filter_lower and (filter_lower in desc or filter_lower in hwid or filter_lower in dev):
+                return p.device
+
+            # Coincidencia por palabras clave típicas
+            if any(k in desc or k in hwid for k in COMMON_SCANNER_KEYWORDS):
+                return p.device
+
+        if timeout and (time.time() - start) >= timeout:
             return None
+
         time.sleep(0.5)
 
 
+# ---------------------------------------
+# RESOLUCIÓN AUTOMÁTICA DEL SERVIDOR
+# ---------------------------------------
 def resolve_server(quick_subnet_scan: bool = True) -> Optional[str]:
-    # 1. Try default hostname
+    """
+    Intenta obtener la IP del servidor en este orden:
+      1) Hostname inventario.local
+      2) Archivo server.txt
+      3) Caché local server_cache.txt
+      4) Escaneo rápido 192.168.1.x buscando /health
+    """
+
+    # 1. Hostname
     try:
         ip = socket.gethostbyname(DEFAULT_SERVER_HOSTNAME)
         if ip:
@@ -92,7 +132,7 @@ def resolve_server(quick_subnet_scan: bool = True) -> Optional[str]:
     except Exception:
         pass
 
-    # 2. Read server.txt
+    # 2. Archivo server.txt
     try:
         if os.path.exists(SERVER_FILE):
             txt = open(SERVER_FILE).read().strip()
@@ -102,7 +142,7 @@ def resolve_server(quick_subnet_scan: bool = True) -> Optional[str]:
     except Exception:
         pass
 
-    # 3. Read cache
+    # 3. Caché
     try:
         if os.path.exists(SERVER_CACHE):
             txt = open(SERVER_CACHE).read().strip()
@@ -111,7 +151,7 @@ def resolve_server(quick_subnet_scan: bool = True) -> Optional[str]:
     except Exception:
         pass
 
-    # 4. Quick subnet scan (192.168.1.x) if requested
+    # 4. Escaneo LAN rápido
     if quick_subnet_scan:
         for i in range(1, 255):
             target = f"192.168.1.{i}"
@@ -126,77 +166,86 @@ def resolve_server(quick_subnet_scan: bool = True) -> Optional[str]:
     return None
 
 
+# ---------------------------------------
+# ENVÍO DEL CÓDIGO AL SERVIDOR
+# ---------------------------------------
 def send_to_server(server_ip: str, code: str) -> bool:
+    """Envía el código recién leído al servidor Flask."""
     url = f"http://{server_ip}:5000{PUSH_ENDPOINT}"
     try:
-        # prefer JSON; server accepts JSON payload
         r = requests.post(url, json={"code": code}, timeout=3)
         return r.status_code == 200
     except Exception:
         return False
 
 
+# ---------------------------------------
+# LECTURA DEL ESCÁNER
+# ---------------------------------------
 def read_from_scanner_loop(port: str, server_ip: str, baud: int = BAUD, delay: float = 0.01, dtr_mode: str = 'auto'):
-    print(f"[INFO] Opening serial port {port} @ {baud}")
+    """
+    Lee del puerto serial carácter por carácter, arma líneas completas,
+    y envía cada código al servidor.
+    Mantiene el puerto abierto hasta que falle.
+    """
+    print(f"[INFO] Abriendo puerto serial {port} @ {baud}")
+
     try:
         ser = serial.Serial(port, baud, timeout=1)
     except Exception as e:
-        print(f"[ERR] Cannot open serial {port}: {e}")
+        print(f"[ERR] No se pudo abrir {port}: {e}")
         return False
-    # Apply DTR/RTS settings to avoid toggling power on some scanners
+
+    # Control de DTR (evita que algunos escáneres se apaguen)
     try:
-        # default: do nothing (auto) — but if user requested off/on, enforce
         if dtr_mode == 'off':
             try:
                 ser.dtr = False
             except Exception:
-                try:
-                    ser.setDTR(False)
-                except Exception:
-                    pass
+                ser.setDTR(False)
         elif dtr_mode == 'on':
             try:
                 ser.dtr = True
             except Exception:
-                try:
-                    ser.setDTR(True)
-                except Exception:
-                    pass
+                ser.setDTR(True)
     except Exception:
         pass
 
     buffer = ""
+
     try:
         while True:
             try:
-                b = ser.read(1)
+                raw = ser.read(1)
             except Exception as e:
-                print('[ERR] Serial read failed:', e)
+                print("[ERR] Fallo de lectura serial:", e)
                 break
 
-            if not b:
+            # Sin datos → esperar
+            if not raw:
                 time.sleep(delay)
                 continue
 
+            # Decode seguro
             try:
-                c = b.decode('utf-8', errors='ignore')
+                char = raw.decode("utf-8", errors="ignore")
             except Exception:
-                c = b.decode('latin1', errors='ignore')
+                char = raw.decode("latin1", errors="ignore")
 
-            if c in ('\n', '\r'):
+            # ¿Fin de línea?
+            if char in ("\n", "\r"):
                 code = buffer.strip()
                 buffer = ""
                 if code:
                     print(f"[SCAN] → {code}")
                     ok = send_to_server(server_ip, code)
                     if ok:
-                        print('[OK] Enviado ✔')
+                        print("[OK] Enviado ✔")
                     else:
-                        print('[ERR] No se pudo enviar, reintentando…')
-                        # On send fail we still continue; could buffer for retry later
+                        print("[ERR] Error enviando al servidor (se reintentará).")
                 continue
 
-            buffer += c
+            buffer += char
 
     finally:
         try:
@@ -207,57 +256,66 @@ def read_from_scanner_loop(port: str, server_ip: str, baud: int = BAUD, delay: f
     return False
 
 
+# ---------------------------------------
+# PROGRAMA PRINCIPAL
+# ---------------------------------------
 def main():
-    p = argparse.ArgumentParser(description='Auto serial forwarder with server discovery')
-    p.add_argument('--server', help='Server IP (no http://). If omitted will try auto-resolve')
-    p.add_argument('--port', help='Serial port name (COM3). If omitted use --auto')
-    p.add_argument('--baud', type=int, default=9600)
-    p.add_argument('--auto', action='store_true', help='Detect serial port automatically')
-    p.add_argument('--filter', help='Prefer ports whose description/manufacturer contains this text')
-    p.add_argument('--retries', type=int, default=5, help='Retries on open before exit (-1 for infinite)')
-    p.add_argument('--dtr', choices=['auto', 'on', 'off'], default='auto', help='Control DTR line: `off` may prevent some scanners from powering down when opened')
-    args = p.parse_args()
+    parser = argparse.ArgumentParser(description="Serial Scanner Forwarder – Limpio y Documentado")
+    parser.add_argument("--server", help="IP del servidor (sin http://). Si no, intenta autodetección.")
+    parser.add_argument("--port", help="Ej: COM3 o /dev/ttyUSB0. Si no, usar --auto.")
+    parser.add_argument("--baud", type=int, default=9600)
+    parser.add_argument("--auto", action="store_true", help="Detectar el puerto del escáner automáticamente.")
+    parser.add_argument("--filter", help="Texto preferido para filtrar puertos (ej: USB)")
+    parser.add_argument("--retries", type=int, default=5, help="Reintentos antes de salir (-1 = infinito).")
+    parser.add_argument("--dtr", choices=["auto", "on", "off"], default="auto", help="Control DTR.")
+    args = parser.parse_args()
 
+    # Resolver servidor
     server_ip = args.server
     if not server_ip:
-        print('[INFO] Resolving server...')
+        print("[INFO] Resolviendo servidor...")
         server_ip = resolve_server()
 
     if not server_ip:
-        print('[FATAL] No server found on network.')
-        print('Create a file named server.txt containing the server IP, or provide --server')
+        print("[FATAL] No se encontró servidor.")
+        print("Crea server.txt con la IP o proporciona --server.")
         return
 
-    print(f"[OK] Server: http://{server_ip}:5000")
+    print(f"[OK] Servidor detectado: http://{server_ip}:5000")
 
+    # Resolver puerto serial
     port = args.port
     if args.auto and not port:
-        print('[INFO] Detecting scanner port...')
+        print("[INFO] Detectando puerto del escáner...")
         port = detect_scanner_port(filter_text=args.filter, timeout=10)
 
     if not port:
-        print('[FATAL] No serial port provided or detected. Use --port or --auto')
+        print("[FATAL] No se encontró puerto serial. Usa --port o --auto.")
         return
 
+    # Loop de reintentos si el puerto se pierde
     retries = args.retries
+
     while True:
         ok = read_from_scanner_loop(port, server_ip, baud=args.baud, dtr_mode=args.dtr)
-        # If read loop returned False, attempt reconnection/re-detect
+
         if retries == 0:
-            print('[FATAL] Exhausted retries. Exiting.')
+            print("[FATAL] Demasiados reintentos. Saliendo.")
             return
 
         if retries > 0:
             retries -= 1
 
-        print('[INFO] Serial connection lost, retrying in 2s...')
+        print("[INFO] Conexión serial perdida. Reintentando en 2s...")
         time.sleep(2)
+
+        # Re-detección del puerto si hay auto
         if args.auto:
             new_port = detect_scanner_port(filter_text=args.filter, timeout=5)
             if new_port:
-                print(f'[INFO] Auto-detected new port: {new_port}')
+                print(f"[INFO] Nuevo puerto detectado: {new_port}")
                 port = new_port
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

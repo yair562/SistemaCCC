@@ -1,87 +1,187 @@
-/* Styles for venta.html extracted from inline styles */
+/* Styles for venta.html */
 
-/* Scanner input and controls */
-#scannerInput { margin-left: 8px; padding: 6px 8px; border-radius: 6px; }
-#focusScanner { margin-left: 6px; }
-#startServerScan { margin-left: 12px; }
-#stopServerScan { margin-left: 6px; }
-#scannerStatus { margin-left: 8px; font-weight: 600; color: #333; }
+/* Scanner controls */
+.search-form { display:flex; flex-direction:column; gap:8px; }
+.search-group { display:flex; gap:8px; align-items:center; }
+.search-input { 
+    flex:1; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; 
+    font-size:15px; outline:none; transition:border-color .2s;
+}
+.search-input:focus { border-color:#007bff; }
+.btn-primary { 
+    background:#007bff; color:white; border:none; padding:8px 14px; 
+    border-radius:8px; cursor:pointer; font-weight:600;
+}
+.btn-primary:hover { background:#0056b3; }
+.btn-secondary { 
+    background:#6c757d; color:white; border:none; padding:6px 12px; 
+    border-radius:8px; cursor:pointer; font-weight:600;
+}
+.scanner-group { display:flex; gap:8px; align-items:center; }
+.btn-scan-start { 
+    margin-left: 12px; background: #007bff; color: white; border: none; 
+    padding: 6px 12px; border-radius: 8px; cursor: pointer;
+}
+.btn-scan-stop { 
+    margin-left: 6px; background: #dc3545; color: white; border: none; 
+    padding: 6px 12px; border-radius: 8px; cursor: pointer;
+}
+.scanner-status { 
+    margin-left: 8px; font-weight: 600; color: #333; padding: 4px 8px;
+    border-radius: 6px; background: #f8f9fa;
+}
+#startServerScan { 
+     margin-left: 12px; 
+     background: #007bff;
+     color: white;
+     border: none;
+     padding: 6px 12px;
+     border-radius: 4px;
+     cursor: pointer;
+}
+#stopServerScan { 
+     margin-left: 6px; 
+     background: #dc3545;
+     color: white;
+     border: none;
+     padding: 6px 12px;
+     border-radius: 4px;
+     cursor: pointer;
+}
+#scannerStatus { 
+     margin-left: 8px; 
+     font-weight: 600; 
+     color: #333; 
+     padding: 4px 8px;
+     border-radius: 4px;
+     background: #f8f9fa;
+}
 
 /* Sections spacing */
 .section-top { margin-top: 24px; }
 .section-mid { margin-top: 18px; }
+.section-help { color:#4b5563; font-size:13px; margin:6px 0 12px; }
 
 /* Small inputs used for price fields */
-.small-input { width: 100px; }
-.small-input-wide { width: 110px; }
-.label-inline { margin-left: 6px; }
+.small-input { 
+    width: 100px; 
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.small-input-wide { 
+    width: 110px; 
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.label-inline { 
+    margin-left: 6px; 
+    margin-right: 10px;
+    font-size: 12px;
+}
+.radio-row { display:flex; gap:12px; align-items:center; margin-top:6px; margin-bottom:6px; }
+.inline-form { display:inline-flex; flex-direction:column; gap:6px; }
 
 /* Table adjustments */
-.table-wrap { overflow:auto; }
-table.productos { width:100%; border-collapse: collapse; border:1px solid #ccc; }
-table.productos th, table.productos td { padding:6px; border:1px solid #ddd; text-align:left }
-table.productos th { background:#f4f4f4 }
+.table-wrap { 
+    overflow:auto; 
+    max-height: 500px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+table.productos { 
+    width:100%; 
+    border-collapse: collapse; 
+    border:1px solid #ccc; 
+}
+table.productos th, table.productos td { 
+    padding:8px; 
+    border:1px solid #ddd; 
+    text-align:left;
+    font-size: 14px;
+}
+.empty-row { text-align:center; color:#6b7280; }
+table.productos th { 
+    background:#f4f4f4;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
 
+/* Button styles */
+button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+button[type="submit"] {
+    background: #007bff;
+    color: white;
+}
+
+button[type="submit"]:hover {
+    background: #0056b3;
+}
+
+/* Form styles */
+form {
+    margin: 0;
+}
+
+/* Responsive design */
 @media (max-width:700px) {
-    table.productos td, table.productos th { font-size:13px }
+    table.productos td, table.productos th { 
+        font-size:12px;
+        padding: 4px;
+    }
+    
+    .toolbar .right form, .search-form {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .toolbar .right form input[type="text"], .search-input {
+        width: 100%;
+        margin: 4px 0;
+    }
+    
+    .toolbar .right form button, .btn-primary, .btn-secondary, .btn-scan-start, .btn-scan-stop {
+        width: 100%;
+        margin: 4px 0;
+    }
 }
-/* --- FIX: Acomodar el recuadro azul con todos los botones del buscador y scanner --- */
 
-.toolbar .right {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    padding: 10px 12px;
-}
-
-/* El formulario ahora fluye en varias líneas si es necesario */
+/* Toolbar improvements */
 .toolbar .right form {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 12px;   /* espacio horizontal y vertical */
+    gap: 8px;
     align-items: center;
-    background: #e7f1ff;       /* tu recuadro azul */
+    background: #e7f1ff;
     padding: 12px;
     border-radius: 10px;
 }
 
-/* Inputs y botones con tamaño consistente y sin encimarse */
 .toolbar .right form input[type="text"] {
     padding: 8px 10px;
     font-size: 15px;
     border-radius: 8px;
     border: 1px solid #ccc;
     min-width: 160px;
-    flex: 1; /* permite que tomen espacio y no se aplasten */
 }
 
-.toolbar .right form button {
-    padding: 8px 14px;
-    font-size: 15px;
-    border-radius: 8px;
-    border: none;
-    background: #0078ff;
-    color: #fff;
-    cursor: pointer;
-    white-space: nowrap; /* evita que el texto se corte raro */
+/* Venta evento meta */
+.event-meta { 
+    display:flex; 
+    gap:12px; 
+    align-items:center; 
+    background:#f7faff; 
+    padding:10px; 
+    border-radius:8px; 
 }
-
-.toolbar .right form span#scannerStatus {
-    font-weight: 600;
-    white-space: nowrap;
-    padding: 6px 4px;
-}
-
-/* Para pantallas pequeñas, se ve bonito sin apretarse */
-@media (max-width: 700px) {
-    .toolbar .right form {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .toolbar .right form input[type="text"] {
-        width: 100%;
-    }
-    .toolbar .right form button {
-        width: 100%;
-    }
-}
+.event-meta form button { background:#dc3545; color:white; }
+.event-meta form button:hover { background:#b52a37; }

@@ -2,16 +2,221 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Configuración</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración - Sistema CCC</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/config.css') }}">
 </head>
 <body>
-    <h1>Configuración</h1>
-    <ul>
-        <li>Nombre del sitio: {{ settings.sitio }}</li>
-        <li>Modo debug: {{ settings.modo_debug }}</li>
-    </ul>
+    <div class="config-container">
+        <!-- Header -->
+        <div class="config-header">
+            <h1>⚙️ Configuración del Sistema</h1>
+            <p class="config-subtitle">Gestiona la configuración y exporta datos del sistema</p>
+        </div>
 
-    <br>
-    <a href="{{ url_for('admin') }}">🔙 Volver al panel</a>
+        <!-- Estadísticas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-number">{{ settings.total_productos }}</div>
+                <div class="stat-label">Productos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-number">{{ settings.total_usuarios }}</div>
+                <div class="stat-label">Usuarios</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📝</div>
+                <div class="stat-number">{{ settings.total_movimientos }}</div>
+                <div class="stat-label">Movimientos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>  <!-- NUEVA ESTADÍSTICA -->
+                <div class="stat-number">{{ settings.total_ventas }}</div>
+                <div class="stat-label">Ventas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔄</div>
+                <div class="stat-number">v{{ settings.version }}</div>
+                <div class="stat-label">Versión</div>
+            </div>
+        </div>
+
+        <!-- Exportación de Datos -->
+        <div class="config-section">
+            <div class="section-header">
+                <span class="section-icon">📤</span>
+                <h2>Exportación de Datos</h2>
+            </div>
+            
+            <div class="config-grid">
+                <div class="config-card">
+                    <h3>Backup Completo</h3>
+                    <p>Descarga un archivo Excel con toda la información del sistema: inventario, usuarios, movimientos y ventas.</p>
+                    <div class="export-options">
+                        <a href="{{ url_for('exportar_excel') }}" class="btn-export" onclick="mostrarCarga()">
+                            <span>💾</span>
+                            <div>
+                                <strong>Descargar Backup Completo</strong>
+                                <div class="export-info">Incluye todas las tablas del sistema</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <h3>Exportaciones Individuales</h3>
+                    <p>Descarga tablas específicas en formato Excel para análisis particulares.</p>
+                    <div class="export-options">
+                        <a href="{{ url_for('exportar_inventario_excel') }}" class="btn-export btn-export-secondary" onclick="mostrarCarga()">
+                            <span>📋</span>
+                            <div>
+                                <strong>Inventario</strong>
+                                <div class="export-info">{{ settings.total_productos }} productos</div>
+                            </div>
+                        </a>
+                        <a href="{{ url_for('exportar_usuarios_excel') }}" class="btn-export btn-export-secondary" onclick="mostrarCarga()">
+                            <span>👥</span>
+                            <div>
+                                <strong>Usuarios</strong>
+                                <div class="export-info">{{ settings.total_usuarios }} usuarios</div>
+                            </div>
+                        </a>
+                        <a href="{{ url_for('exportar_movimientos_excel') }}" class="btn-export btn-export-secondary" onclick="mostrarCarga()">
+                            <span>📝</span>
+                            <div>
+                                <strong>Movimientos</strong>
+                                <div class="export-info">{{ settings.total_movimientos }} registros</div>
+                            </div>
+                        </a>
+                        <!-- NUEVO BOTÓN PARA EXPORTAR VENTAS -->
+                        <a href="{{ url_for('exportar_ventas_excel') }}" class="btn-export btn-export-secondary" onclick="mostrarCarga()">
+                            <span>💰</span>
+                            <div>
+                                <strong>Ventas</strong>
+                                <div class="export-info">{{ settings.total_ventas }} registros</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuración del Sistema -->
+        <div class="config-section">
+            <div class="section-header">
+                <span class="section-icon">🔧</span>
+                <h2>Configuración del Sistema</h2>
+            </div>
+            
+            <div class="config-card">
+                <h3>Información General</h3>
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <span class="setting-label">Nombre del Sistema</span>
+                        <span class="setting-value">{{ settings.sitio }}</span>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">Versión</span>
+                        <span class="setting-value">{{ settings.version }}</span>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">Modo Debug</span>
+                        <span class="setting-value {{ 'true' if settings.modo_debug else 'false' }}">
+                            {{ 'Activado' if settings.modo_debug else 'Desactivado' }}
+                        </span>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">Base de Datos</span>
+                        <span class="setting-value">SQLite</span>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">Tablas</span>
+                        <span class="setting-value">5 tablas</span>  <!-- Actualizado a 5 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información de la Base de Datos -->
+        <div class="config-section">
+            <div class="section-header">
+                <span class="section-icon">🗃️</span>
+                <h2>Base de Datos</h2>
+            </div>
+            
+            <div class="config-card">
+                <h3>Estructura de Tablas</h3>
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <span class="setting-label">📦 Inventory</span>
+                        <span class="setting-value">Productos del inventario</span>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">👥 Usuarios</span>
+                        <span class="setting-value">Usuarios del sistema</span>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">📝 Movimientos</span>
+                        <span class="setting-value">Registro de actividades</span>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">💰 Ventas</span>  <!-- NUEVA TABLA -->
+                        <span class="setting-value">Registro de ventas</span>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">🔢 sqlite_sequence</span>
+                        <span class="setting-value">Tabla interna de SQLite</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botón Volver -->
+        <div class="actions">
+            <a href="{{ url_for('admin') }}" class="btn-back">
+                🔙 Volver al Panel Principal
+            </a>
+        </div>
+    </div>
+
+    <!-- Overlay de carga -->
+    <div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); color: white; justify-content: center; align-items: center; z-index: 9999; flex-direction: column;">
+        <div style="font-size: 2em; margin-bottom: 20px;">⏳</div>
+        <div style="font-size: 1.2em;">Generando archivo Excel...</div>
+        <div style="font-size: 0.9em; margin-top: 10px; opacity: 0.8;">Por favor espere</div>
+    </div>
+
+    <script>
+        // Mostrar overlay de carga
+        function mostrarCarga() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }, 3000);
+        }
+
+        // Efectos de hover mejorados
+        document.querySelectorAll('.btn-export').forEach(btn => {
+            btn.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-3px)';
+            });
+            
+            btn.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Ocultar overlay cuando se complete la descarga (aproximadamente)
+        document.querySelectorAll('.btn-export').forEach(btn => {
+            btn.addEventListener('click', function() {
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                }, 3000);
+            });
+        });
+    </script>
 </body>
 </html>
