@@ -30,7 +30,7 @@ except Exception:
 app = Flask(__name__, static_folder='static')
 # SECRET_KEY segura desde entorno o generada aleatoriamente (no determinista)
 app.secret_key = os.environ.get('FLASK_SECRET') or secrets.token_hex(32)
-DB_PATH = r"C:\RepoSistema\SistemaCCC\inventario_consolidado.db"
+DB_PATH = r"C:\Users\ROG\PruebaGit\SistemaCCC\inventario_consolidado.db"
 
 CATEGORIAS = {
     "ANT": "Antenas",
@@ -2221,41 +2221,105 @@ def venta_ticket_download(venta_id):
 
 @app.route('/venta/ticket/<int:venta_id>/pdf')
 def venta_ticket_pdf(venta_id):
-    """Genera un PDF del ticket y lo devuelve como descarga."""
     if pisa is None:
         return jsonify({'ok': False, 'msg': 'Generación de PDF no disponible (falta xhtml2pdf)'}), 500
+
     try:
         bundle = build_ticket_bundle(venta_id)
         if not bundle:
             return jsonify({'ok': False, 'msg': 'Venta no encontrada'}), 404
-        logo_path = os.path.join(app.static_folder, 'images', 'CCClogo.jpg')
+
         ticket, items = bundle
+
+        # Asegurar strings seguros para Jinja
+        for item in items:
+            item['sku'] = str(item.get('sku', '') or '')
+            item['marca'] = str(item.get('marca', '') or '')
+            item['modelo'] = str(item.get('modelo', '') or '')
+            item['tipo'] = str(item.get('tipo', '') or '')
+            item['no_serie'] = str(item.get('no_serie', '') or '')
+            # dejar item['precio'] como numérico si existe
+
+        # Leer CSS desde static
         css_path = os.path.join(app.static_folder, 'css', 'venta_ticket_pdf.css')
-        ticket_css = ''
+        ticket_css = ""
         if os.path.exists(css_path):
             try:
                 with open(css_path, 'r', encoding='utf-8') as css_file:
                     ticket_css = css_file.read()
-            except Exception:
-                ticket_css = ''
-        html = render_template(
-            'venta_ticket_pdf.html',
-            ticket=ticket,
-            items=items,
-            logo_path=logo_path if os.path.exists(logo_path) else None,
-        )
+            except Exception as e:
+                print(f"[WARN] Error leyendo CSS: {e}")
+        else:
+            print(f"[WARN] CSS no encontrado en: {css_path}")
+
+        # Preparar logo como file:// (xhtml2pdf lo entiende mejor)
+        logo_fs = os.path.join(app.static_folder, 'images', 'CCClogo.jpg')
+        logo_url = None
+        if os.path.exists(logo_fs):
+            # convert Windows backslashes a slashes y anteponer file://
+            logo_url = 'file://' + logo_fs.replace('\\', '/')
+
+        # Generar HTML con Jinja (plantilla debe usar .page con page-break-after)
+        html = render_template('venta_ticket_pdf.html', ticket=ticket, items=items, logo_path=logo_url)
+
+        # Inyectar CSS dentro del <head> (xhtml2pdf lo necesita inline)
         if ticket_css:
             style_tag = f"<style>\n{ticket_css}\n</style>\n"
-            html = html.replace('</head>', f"{style_tag}</head>", 1)
+            if '</head>' in html:
+                html = html.replace('</head>', f"{style_tag}</head>", 1)
+            else:
+                # si no hay head, añadir al inicio del documento
+                html = style_tag + html
+
+        # Guardar HTML de depuración para abrir en navegador
+        debug_dir = os.path.join(app.root_path, 'debug')
+        os.makedirs(debug_dir, exist_ok=True)
+        debug_html_path = os.path.join(debug_dir, f'ticket_{venta_id}.html')
+        with open(debug_html_path, 'w', encoding='utf-8') as f:
+            f.write(html)
+        print(f"[DEBUG] HTML guardado en: {debug_html_path}")
+
+        # Generar PDF con pisa (sin default_css agresivo)
         pdf_buffer = BytesIO()
-        pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+        pisa_status = pisa.CreatePDF(
+            html,
+            dest=pdf_buffer,
+            encoding='utf-8',
+            show_error_as_pdf=True
+        )
+
         if pisa_status.err:
+            print(f"[ERROR] pisa error: {pisa_status.err}")
+            # Guardar PDF parcial para depuración
+            try:
+                with open(os.path.join(debug_dir, f'ticket_{venta_id}_error.pdf'), 'wb') as pf:
+                    pf.write(pdf_buffer.getvalue())
+            except Exception:
+                pass
             return jsonify({'ok': False, 'msg': 'No se pudo generar el PDF del ticket'}), 500
+
         pdf_buffer.seek(0)
-        filename = f"ticket-venta-{ticket['id']}.pdf"
-        return send_file(pdf_buffer, mimetype='application/pdf', as_attachment=True, download_name=filename)
+        filename = f"ticket-venta-{ticket.get('id', venta_id)}.pdf"
+
+        # Guardar copia de depuración del PDF
+        pdf_debug_path = os.path.join(debug_dir, f'ticket_{venta_id}.pdf')
+        with open(pdf_debug_path, 'wb') as f:
+            f.write(pdf_buffer.getvalue())
+        pdf_buffer.seek(0)
+        print(f"[DEBUG] PDF guardado en: {pdf_debug_path}")
+
+        # Enviar archivo al navegador; compat con Flask viejas/nuevas
+        try:
+            return send_file(pdf_buffer, mimetype='application/pdf', as_attachment=True, download_name=filename)
+        except TypeError:
+            # fallback para Flask antiguo que usa attachment_filename
+            return send_file(pdf_buffer, mimetype='application/pdf', as_attachment=True, attachment_filename=filename)
+
     except Exception as e:
+        import traceback
+        print(f"Error completo: {traceback.format_exc()}")
         return jsonify({'ok': False, 'msg': str(e)}), 500
+
 
 @app.route('/venta/ticket/<int:venta_id>/qr.png')
 def venta_ticket_qr(venta_id):
@@ -2370,6 +2434,7 @@ def venta_evento_reporte_qr():
     qr.make(fit=True)
     img_qr = qr.make_image(fill_color="black", back_color="white").convert('RGB')
 
+    # Intentar overlay de logo
     try:
         logo_path = os.path.join(app.static_folder, 'images', 'CCClogo.jpg')
         if os.path.exists(logo_path):
@@ -2496,13 +2561,22 @@ def venta_evento_abrir():
 # ============================
 @app.route('/ubicaciones/agregar', methods=['POST'])
 def ubicaciones_agregar():
-    nombre = (request.form.get('nombre') or (request.json.get('nombre') if request.is_json else '')).strip()
-    nivel = (request.form.get('nivel') or (request.json.get('nivel') if request.is_json else '')).strip().upper()
-    nota = (request.form.get('nota') or (request.json.get('nota') if request.is_json else '')).strip() or None
+    # Obtener datos de JSON o form
+    if request.is_json:
+        data = request.get_json()
+        nombre = data.get('nombre', '').strip()
+        nivel = data.get('nivel', '').strip().upper()
+        nota = data.get('nota', '').strip() or None
+    else:
+        nombre = request.form.get('nombre', '').strip()
+        nivel = request.form.get('nivel', '').strip().upper()
+        nota = request.form.get('nota', '').strip() or None
+    
     if not nombre or not nivel:
         return jsonify({'ok': False, 'msg': 'nombre y nivel requeridos'}), 400
     if len(nombre) > 120:
         return jsonify({'ok': False, 'msg': 'Nombre demasiado largo'}), 400
+    
     try:
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
@@ -2513,15 +2587,19 @@ def ubicaciones_agregar():
             nota TEXT,
             UNIQUE(nivel,nombre)
         )""")
-        cur.execute("INSERT OR IGNORE INTO ubicaciones_catalogo (nombre,nivel,nota) VALUES (?,?,?)", (nombre, nivel, nota))
+        cur.execute("INSERT OR IGNORE INTO ubicaciones_catalogo (nombre,nivel,nota) VALUES (?,?,?)", 
+                    (nombre, nivel, nota))
         conn.commit()
         cur.execute("SELECT id FROM ubicaciones_catalogo WHERE nombre=? AND nivel=?", (nombre, nivel))
         rid = cur.fetchone()[0]
         conn.close()
+        
         try:
-            log_movimiento(session.get('usuario'), 'UBICACION_AGREGAR', rid, None, {'nombre': nombre, 'nivel': nivel})
+            log_movimiento(session.get('usuario'), 'UBICACION_AGREGAR', rid, None, 
+                          {'nombre': nombre, 'nivel': nivel})
         except Exception:
             pass
+        
         return jsonify({'ok': True, 'msg': 'Ubicación agregada', 'id': rid})
     except Exception as e:
         return jsonify({'ok': False, 'msg': str(e)}), 500

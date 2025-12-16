@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ticket de Venta - Doble Copia</title>
+<style>
+@page {
+    size: A4 portrait;
+    margin: 12mm;
+}
+
+body {
+    margin: 0;
+    font-family: DejaVu Sans, Arial, sans-serif;
+    font-size: 15px;
+    color: #0f172a;
+}
+
+.sheet-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ticket-row td {
+    height: 128mm;
+    padding: 8px 6px 4px;
+    vertical-align: top;
+    page-break-after: avoid;
+}
+
+.cut-row td {
+    padding: 0;
+}
+
+.cut-line {
+    border-top: 1px dashed #94a3b8;
+    text-align: center;
+    font-size: 10px;
+    color: #64748b;
+    padding: 6px 0;
+}
+
+.ticket {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 18px;
+    background: #ffffff;
+}
+
+.copy-label {
+    float: right;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #ffffff;
+    border-radius: 4px;
+    margin-left: 8px;
+}
+
+.copy-caja { background: #3b82f6; }
+.copy-cliente { background: #10b981; }
+
+.header-table {
+    width: 100%;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 8px;
+}
+
+.logo-cell {
+    width: 55px;
+}
+
+.logo {
+    width: 48px;
+    height: 48px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 3px;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.subtitle {
+    font-size: 16px;
+    color: #64748b;
+}
+
+.ticket-number {
+    font-size: 18px;
+    font-weight: 700;
+    color: #334155;
+    padding: 4px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.info-grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+}
+
+.info-grid td {
+    width: 50%;
+    padding: 8px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+    font-size: 14px;
+}
+
+.info-grid tr:last-child td {
+    border-bottom: none;
+}
+
+.section-title {
+    margin-top: 10px;
+    font-weight: 700;
+    color: #334155;
+    font-size: 15px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 5px;
+}
+
+.observaciones {
+    margin: 6px 0;
+    padding: 8px;
+    background: #f8fafc;
+    border-radius: 4px;
+    border-left: 3px solid #3b82f6;
+    font-size: 14px;
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+    font-size: 13px;
+}
+
+.items-table th {
+    text-align: left;
+    padding: 8px 5px;
+    border-bottom: 1px solid #cbd5e1;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 14px;
+}
+
+.items-table td {
+    padding: 7px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+    font-size: 13px;
+}
+
+.items-table tr:last-child td {
+    border-bottom: 1px solid #cbd5e1;
+}
+
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+
+.serial-number {
+    display: block;
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.total-row {
+    font-weight: 700;
+    background: #eef2ff;
+}
+
+.ticket-footer {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #cbd5e1;
+    text-align: center;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.print-message {
+    text-align: center;
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 8px;
+}
+
+</style>
+</head>
+<body>
+  
+  
+  <div class="page">
+    <div class="ticket">
+      <div class="copy-label copy-caja">Copia Caja</div>
+      <table class="header-table">
+        <tr>
+          <td class="logo-cell">
+            
+            <img class="logo" src="file://C:/Users/ROG/PruebaGit/SistemaCCC/static/images/CCClogo.jpg" alt="Logo CCC">
+            
+          </td>
+          <td class="title-cell">
+            <div class="title">COLEGIO CRISTÓBAL COLÓN</div>
+            <div class="subtitle">Ticket de venta — Inventario CCC</div>
+          </td>
+          <td class="logo-cell">
+            <img class="logo" src="file:///C:/Users/ROG/PruebaGit/SistemaCCC/static/images/CCClogo.jpg" alt="Logo CCC">
+          </td>
+        </tr>
+      </table>
+      <div class="ticket-number">Ticket #T-6</div>
+      <table class="info-grid">
+        <tr>
+          <td>
+            <strong>Fecha:</strong> 2025-12-15T16:18:14.599952<br>
+            <strong>Evento:</strong> 2025-12-15<br>
+            <strong>Comprador:</strong> Yair prueba
+          </td>
+          <td>
+            <strong>Vendedor:</strong> Yair<br>
+            <strong>Artículos:</strong> 2<br>
+            <strong>Total:</strong> $200.00
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <strong>Ticket ID:</strong> 6
+          </td>
+        </tr>
+      </table>
+      
+      <div class="section-title">Observaciones</div>
+      <div class="observaciones">ESTA ES UNA PRUEBA DEVOLVER OBJETO A ESTADO &#34;VENTA&#34;</div>
+      
+      <div class="section-title">Artículos vendidos</div>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th class="text-left">SKU</th>
+            <th class="text-left">Descripción</th>
+            <th class="text-right">Precio</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td class="text-left">ATV-10</td>
+            <td class="text-left">
+               
+              
+              <span class="serial-number">No. Serie: ATV-10</span>
+              
+            </td>
+            <td class="text-right">$100.00</td>
+          </tr>
+          
+          <tr>
+            <td class="text-left">ATV-11</td>
+            <td class="text-left">
+               
+              
+              <span class="serial-number">No. Serie: ATV-11</span>
+              
+            </td>
+            <td class="text-right">$100.00</td>
+          </tr>
+          
+          <tr class="total-row">
+            <td colspan="2" class="text-right">TOTAL</td>
+            <td class="text-right">$200.00</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="ticket-footer">
+        Este ticket es válido como comprobante de venta<br>
+        Sistema de Inventario CCC
+      </div>
+      
+        <div style="page-break-after: always;"></div>
+      
+    </div>
+  </div>
+  
+  
+  
+  <div class="page">
+    <div class="ticket">
+      <div class="copy-label copy-cliente">Copia Cliente</div>
+      <table class="header-table">
+        <tr>
+          <td class="logo-cell">
+            
+            <img class="logo" src="file://C:/Users/ROG/PruebaGit/SistemaCCC/static/images/CCClogo.jpg" alt="Logo CCC">
+            
+          </td>
+          <td class="title-cell">
+            <div class="title">COLEGIO CRISTÓBAL COLÓN</div>
+            <div class="subtitle">Ticket de venta — Inventario CCC</div>
+          </td>
+          <td class="logo-cell">
+            <img class="logo" src="file:///C:/Users/ROG/PruebaGit/SistemaCCC/static/images/CCClogo.jpg" alt="Logo CCC">
+          </td>
+        </tr>
+      </table>
+      <div class="ticket-number">Ticket #T-6</div>
+      <table class="info-grid">
+        <tr>
+          <td>
+            <strong>Fecha:</strong> 2025-12-15T16:18:14.599952<br>
+            <strong>Evento:</strong> 2025-12-15<br>
+            <strong>Comprador:</strong> Yair prueba
+          </td>
+          <td>
+            <strong>Vendedor:</strong> Yair<br>
+            <strong>Artículos:</strong> 2<br>
+            <strong>Total:</strong> $200.00
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <strong>Ticket ID:</strong> 6
+          </td>
+        </tr>
+      </table>
+      
+      <div class="section-title">Observaciones</div>
+      <div class="observaciones">ESTA ES UNA PRUEBA DEVOLVER OBJETO A ESTADO &#34;VENTA&#34;</div>
+      
+      <div class="section-title">Artículos vendidos</div>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th class="text-left">SKU</th>
+            <th class="text-left">Descripción</th>
+            <th class="text-right">Precio</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td class="text-left">ATV-10</td>
+            <td class="text-left">
+               
+              
+              <span class="serial-number">No. Serie: ATV-10</span>
+              
+            </td>
+            <td class="text-right">$100.00</td>
+          </tr>
+          
+          <tr>
+            <td class="text-left">ATV-11</td>
+            <td class="text-left">
+               
+              
+              <span class="serial-number">No. Serie: ATV-11</span>
+              
+            </td>
+            <td class="text-right">$100.00</td>
+          </tr>
+          
+          <tr class="total-row">
+            <td colspan="2" class="text-right">TOTAL</td>
+            <td class="text-right">$200.00</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="ticket-footer">
+        Este ticket es válido como comprobante de venta<br>
+        Sistema de Inventario CCC
+      </div>
+      
+    </div>
+  </div>
+  
+  
+</body>
+</html>

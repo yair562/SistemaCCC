@@ -1,6 +1,6 @@
 import sqlite3
 
-ruta_bd = r"C:\RepoSistema\SistemaCCC\inventario_consolidado.db"
+ruta_bd = r"C:\Users\ROG\PruebaGit\SistemaCCC\inventario_consolidado.db"
 conn = sqlite3.connect(ruta_bd)
 cursor = conn.cursor()
 
